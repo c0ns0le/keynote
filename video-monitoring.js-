@@ -1,0 +1,71 @@
+Scripter.Logging = 1;
+
+// ====
+// Variables
+var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)';
+var manifestBaseUrl = "http://edge3.catalog.video.msn.com/videobyuuid.aspx?uuid=";
+
+
+// ====
+// Functions
+var checkResponse = function(url) {
+  if(typeof url == 'string') {
+    Scripter.Log("Fetching url: " + url);
+    if(!KNWeb.Get(url)) {
+      KNWeb.SetErrorDetails(-99100, "** ERROR: Failed to get content for url: " + url);
+    }
+  }
+  //Scripter.Log("Checking response header for " + KNWeb.GetURL(0));
+  header = KNWeb.GetResponseHeaders(0);
+  Scripter.Log("Received a response of '" + header.match(/[^\r\n]*/) + "'.");
+
+  if(/200 OK/.test(header)) {
+    return;
+  }
+  KNWeb.SetErrorDetails(-99100,"Did not respond with code 200" + contentId,"","","");
+}
+
+// ====
+// Script
+var content = KNWeb.GetContent(0);
+checkResponse();
+Scripter.Log("Response content length: " + content.length);
+var contentIds = new Array();
+var videoUrls = new Array();
+var match = content.match(new RegExp(contentIdRegexp, 'gi'));
+
+Scripter.Log("\nFound " + match.length + " video ids");
+
+// Parsing through the pano definition
+regex = new RegExp(contentIdRegexp);
+for(i=0; i<match.length; i++) {
+  contentId = match[i].match(regex)[1];
+  Scripter.Log("Video id: " + contentId);
+  contentIds.push(contentId);
+}
+
+// Fetching manifests
+regex = new RegExp('http[^"]*\.mp4', 'gi');
+Scripter.Log("\nProcessing " + contentIds.length + " manifests");
+for(j in contentIds) {
+  contentId = contentIds[j];
+  Scripter.Log("\nFetching manifest for: " + contentId);
+
+  checkResponse(manifestBaseUrl + contentId);
+  matchedUrls = KNWeb.GetContent(0).match(regex);
+  for(i=0; i<matchedUrls.length; i++) {
+    Scripter.Log("Found video url: " + matchedUrls[i]);
+    videoUrls.push(matchedUrls[i]);
+  }
+}
+
+// Fetching HEAD for videos
+Scripter.Log("\nProcessing " + videoUrls.length + " videos");
+for (j in videoUrls) {
+  url = videoUrls[j];
+  Scripter.Log("\nRequesting HEAD information for: " + url);
+  if(!KNWeb.Head(url)) {
+    KNWeb.SetErrorDetails(-99100,"Cannot get header for: " + url,"","","");
+  }
+  checkResponse();
+}

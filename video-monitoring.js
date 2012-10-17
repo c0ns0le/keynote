@@ -8,24 +8,21 @@ var numManifestServers = 5;
 var formatCode = ['1002', '103'];
 var filetype = 'mp4';
 
-var errors = [];
+var errorLog = [];
 
 
 // ====
 // Functions
 
 /**
- * TODO description
+ * Performs a HEAD or GET request
+ * @param url(string): url to request
+ * @param request(string): 'get' or 'head' request
+ * @return content string if GET request is successful
+ * @return boolean if HEAD request or GET is unsuccessful
  **/
 var fetchContent = function(url, request) {
   request = typeof request == 'undefined'? 'get' : request;
-
-  if(typeof url != 'string') {
-    // TODO programming error
-  }
-  if(typeof request != 'string' && /(get|head)/i.test(request)) {
-    // TODO programming error
-  }
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
@@ -58,34 +55,32 @@ var fetchContent = function(url, request) {
 }
 
 /**
- * Get a random endpoint from 1 to max, inclusive
- * @param baseUrl (string): url with %ENDPOINT% to hit a random MSN server
- * @return: random url
+ * Chooses a random manifest endpoint from 1 to max, inclusive
+ * @param baseUrl(string): url with %ENDPOINT% to hit a random server serving manifests.
+ * @return random url
  **/
-// TODO better description
 var fetchManifestUrl = function(baseUrl) { 
   serverEndpoint = Math.floor((Math.random()*numManifestServers)+1);
   return manifestBaseUrl.replace("%ENDPOINT%", serverEndpoint);
 }
 
 /**
- * Fetch video urls specified by format code.
- * @param manifestUrl (string): url to MSN manifest
- * @param format (undefined, string, array): format code to the video to check
- * If format === undefined, all video urls in manifest will be returned
- * @return: an array of video urls
- * TODO update description
+ * Using the given manifest url, perform HEAD request on the videos with specified format code
+ * @param manifestUrl(string): url to manifest server
+ * @param format(undefined, string, array): format code to the video to check
+ *        If format is undefined, all video urls in manifest will be returned
+ * @return boolean if there were errors
  **/
-var verifyManifest = function(manifestUrl, format) {
+var verifyVideosInManifest = function(manifestUrl, format) {
+  failed = true;
+  parsingError = false;
   format = typeof format === 'undefined'? ['*'] : format;
   format = typeof format === 'string'? [format] : format;
-  if(! format instanceof Array) {
-    // TODO programming error
-  }
   content = fetchContent(manifestUrl);
 
   if(typeof content == 'boolean') {
-    // TODO error - trouble downloading manifest
+    Scripter.SetError(-90404, true);
+    KNWeb.SetErrorDetails(-90404, "Manifest failed to download! (" + manifestUrl + ")" );
   }
 
   Scripter.Log("Processing format(s): " + format);
@@ -93,28 +88,56 @@ var verifyManifest = function(manifestUrl, format) {
     regex = new RegExp('<videoFile formatCode="' + format[i] + '".*?<\/videoFile>', 'gim');
     videoFiles = content.match(regex);
 
+    // If there's no matching block
     if(!videoFiles) {
-      Scripter.Log("** FAILED on format " + format[i] + ". Logging error");
-      errors.push("Manifest " + manifestUrl + " does not have video content for format code " + format[i]);
+      Scripter.Log("*** FAILED on format " + format[i] + ".");
+      errorLog.push("**WARNING** Manifest " + manifestUrl + " does not have format code " + format[i]);
       continue;
     }
 
-    for(j=0; j<videoFiles.length; j++) {
+    // If there's more than one matching block (there shouldn't)
+    if(videoFiles.length != 1) {
+      Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
+      errorLog.push("**ERROR** Parsing error on manifest " + manifestUrl);
+      parsingError = true;
+      break;
+    }
+    else {
       regex = new RegExp('http[^"]*\.' + filetype, 'gi');
-      videoUris = videoFiles[j].match(regex);
+      videoUris = videoFiles[0].match(regex);
 
+      // If there's no matching block
       if(!videoUris) {
-        Scripter.Log("** FAILED on format " + format[i] + ". Logging error");
-        errors.push("Manifest " + manifestUrl + " does not have video content for format code " + format[i]);
+        Scripter.Log("*** FAILED on finding a matching video for format " + format[i] + ".");
+        errorLog.push("**WARNING** No " + filetype + " file for format code " + format[i] + " in manifest " + manifestUrl);
+        parsingError = true;
         continue;
       }
 
-      for(k=0; k<videoUris.length; k++) {
-        Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[k]);
-        fetchContent(videoUris[k], 'head');
+      // If there's more than one matching block (there shouldn't)
+      if(videoUris.length != 1) {
+        Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
+        errorLog.push("**ERROR** Parsing error on manifest " + manifestUrl);
+        parsingError = true;
+        break;
+      }
+      else {
+        Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[0]);
+        fetchContent(videoUris[0], 'head');
       }
     }
+    failed = false;
   }
+
+  // if videos all fail in the manifest, raise the error level
+  if(failed) {
+    for(i=0; i<format.length; i++) {
+      errorLog.pop();
+    }
+    errorLog.push("**ERROR** Manifest " + manifestUrl + " does not have format code(s) " + format);
+  }
+
+  return failed | parsingError;
 }
 
 // ====
@@ -143,21 +166,28 @@ for(i=0; i<match.length; i++) {
 // Processing manifests
 regex = new RegExp('http[^"]*\.'+filetype, 'gi');
 Scripter.Log("\nProcessing " + contentIds.length + " manifests");
+errors = false;
 for(j in contentIds) {
   contentId = contentIds[j];
-  Scripter.Log("\nFetching manifest for: " + contentId);
+  Scripter.Log("\n---- #" + (+j+1) + " manifest ----");
+  Scripter.Log("Fetching manifest for: " + contentId);
 
   manifestUrl = fetchManifestUrl(manifestBaseUrl) + contentId;
-  response = verifyManifest(manifestUrl, formatCode);
+  errors |= verifyVideosInManifest(manifestUrl, formatCode);
 }
 
 // Display all the errors
-// TODO find an appropriate error number
-if(errors.length > 0) {
-  Scripter.Log("\n\n========\nError Log\n========\n");
-  for(i in errors) {
-    Scripter.Log(+i+1 + ") " + errors[i]);
+Scripter.Log("\n\n========\nError Log\n========");
+if(errorLog.length < 1) {
+  Scripter.Log("None.");
+}
+else {
+  for(i in errorLog) {
+    Scripter.Log(+i+1 + ") " + errorLog[i]);
   }
-  Scripter.SetError(-99503, true);
-  KNWeb.SetErrorDetails(-99503, "No video ids found in the supplied pano definition!");
+}
+
+if(errors) {
+  Scripter.SetError(-90404, true);
+  KNWeb.SetErrorDetails(-90404, "Some error occurred. See error log for details");
 }

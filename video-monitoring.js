@@ -9,6 +9,9 @@ var formatCode = ['1002', '103'];
 var filetype = 'mp4';
 
 var errorLog = [];
+var content = '';
+var contentIds = [];
+var contentTitles = {};
 
 
 // ====
@@ -65,6 +68,18 @@ var fetchManifestUrl = function(baseUrl) {
 }
 
 /**
+ *
+ **/
+var getTitle = function(content) {
+  regex = new RegExp('<title>(.*?)<\/title>', 'im');
+  title = content.match(regex);
+  if(!title || title.length != 2) {
+    return 'NA';
+  }
+  return title[1].replace(/^\s+|\s+$/g, '');
+}
+
+/**
  * Using the given manifest url, perform HEAD request on the videos with specified format code
  * @param manifestUrl(string): url to manifest server
  * @param format(undefined, string, array): format code to the video to check
@@ -80,7 +95,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
 
   if(typeof content == 'boolean') {
     Scripter.Log("** FAILED on downloading manifest file");
-    errorLog.push("**ERROR** Manifest file missing - " + manifestUrl);
+    errorLog.push("**ERROR**\tManifest file missing - " + manifestUrl);
     return failed;
   }
 
@@ -92,14 +107,14 @@ var verifyVideosInManifest = function(manifestUrl, format) {
     // If there's no matching block
     if(!videoFiles) {
       Scripter.Log("*** FAILED on format " + format[i] + ".");
-      errorLog.push("**WARNING** Manifest " + manifestUrl + " does not have format code " + format[i]);
+      errorLog.push("**WARNING**\tManifest " + manifestUrl + " does not have format code " + format[i]);
       continue;
     }
 
     // If there's more than one matching block (there shouldn't)
     if(videoFiles.length != 1) {
       Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
-      errorLog.push("**ERROR** Parsing error on manifest " + manifestUrl);
+      errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
       parsingError = true;
       break;
     }
@@ -110,7 +125,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       // If there's no matching block
       if(!videoUris) {
         Scripter.Log("*** FAILED on finding a matching video for format " + format[i] + ".");
-        errorLog.push("**WARNING** No " + filetype + " file for format code " + format[i] + " in manifest " + manifestUrl);
+        errorLog.push("**WARNING**\tNo " + filetype + " file for format code " + format[i] + " in manifest " + manifestUrl);
         parsingError = true;
         continue;
       }
@@ -118,7 +133,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       // If there's more than one matching block (there shouldn't)
       if(videoUris.length != 1) {
         Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
-        errorLog.push("**ERROR** Parsing error on manifest " + manifestUrl);
+        errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
         parsingError = true;
         break;
       }
@@ -135,7 +150,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
     for(i=0; i<format.length; i++) {
       errorLog.pop();
     }
-    errorLog.push("**ERROR** Manifest " + manifestUrl + " does not have format code(s) " + format);
+    errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format);
   }
 
   return failed | parsingError;
@@ -146,7 +161,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
 var content = fetchContent(KNWeb.GetURL(0));
 
 Scripter.Log("Response content length: " + content.length);
-var contentIds = new Array();
+var titles = [];
 var match = content.match(new RegExp(contentIdRegexp, 'gi'));
 
 if(!match) {
@@ -157,7 +172,7 @@ if(!match) {
 Scripter.Log("\nFound " + match.length + " video ids");
 
 // Parsing through the pano definition
-regex = new RegExp(contentIdRegexp);
+var regex = new RegExp(contentIdRegexp);
 for(i=0; i<match.length; i++) {
   contentId = match[i].match(regex)[1];
   Scripter.Log("Video id: " + contentId);
@@ -167,7 +182,7 @@ for(i=0; i<match.length; i++) {
 // Processing manifests
 regex = new RegExp('http[^"]*\.'+filetype, 'gi');
 Scripter.Log("\nProcessing " + contentIds.length + " manifests");
-errors = false;
+var errors = false;
 for(j in contentIds) {
   contentId = contentIds[j];
   Scripter.Log("\n---- #" + (+j+1) + " manifest ----");
@@ -175,6 +190,13 @@ for(j in contentIds) {
 
   manifestUrl = fetchManifestUrl(manifestBaseUrl) + contentId;
   errors |= verifyVideosInManifest(manifestUrl, formatCode);
+  contentTitles[contentId] = getTitle(content);
+}
+
+// Print out all mappings
+Scripter.Log("\n\n========\nContentID Mapping\n========");
+for(i in contentTitles) {
+  Scripter.Log(i + "\t" + contentTitles[i]);
 }
 
 // Display all the errors

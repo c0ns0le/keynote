@@ -42,10 +42,13 @@ var fetchContent = function(url, request) {
   else {
     Scripter.Log ("Issuing GET request for: " + url);
     // TODO has to fail here, Keynote sucks
+    /*
     if(!KNWeb.Get(url)) {
       Scripter.SetError(-90404, true);
       KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0));
     }
+    */
+    KNWeb.Get(url);
   }
 
   header = KNWeb.GetResponseHeaders(0);
@@ -189,7 +192,11 @@ for(j in contentIds) {
   Scripter.Log("Fetching manifest for: " + contentId);
 
   manifestUrl = fetchManifestUrl(manifestBaseUrl) + contentId;
-  errors |= verifyVideosInManifest(manifestUrl, formatCode);
+  manifestError = verifyVideosInManifest(manifestUrl, formatCode);
+  errors |= manifestError;
+  if(manifestError) {
+    continue;
+  }
   contentTitles[contentId] = getTitle(content);
 }
 

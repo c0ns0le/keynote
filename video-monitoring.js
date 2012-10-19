@@ -23,30 +23,30 @@ var errorLog = [];
  **/
 var fetchContent = function(url, request) {
   request = typeof request == 'undefined'? 'get' : request;
+  /*
+  KNWeb.ClearSettings();
+  KNWeb.Error = 0;
+  KNWeb.ErrorDeferredStop = 0;
+  KNWeb.ErrorChecking = 0;
+  Scripter.Log("error: " + KNWeb.ErrorNumber);
+  Scripter.Log("deferred: " + KNWeb.ErrorDeferredStop);
+  */
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
-    if(!KNWeb.Head(url)) {
-      Scripter.SetError(-90400, true);
-      KNWeb.SetErrorDetails(-90400,"Cannot get header for: " + url,"","","");
-    }
+    KNWeb.Head(url);
   }
   else {
     Scripter.Log ("Issuing GET request for: " + url);
+    // TODO has to fail here, Keynote sucks
     if(!KNWeb.Get(url)) {
       Scripter.SetError(-90404, true);
-      KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + url);
+      KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0));
     }
   }
 
   header = KNWeb.GetResponseHeaders(0);
-  Scripter.Log("Received a response of '" + header.match(/[^\r\n]*/) + "'.");
-  /*
-  if(!/200/.test(header)) {
-    Scripter.SetError(-99102, true);
-    KNWeb.SetErrorDetails(-99102,"Did not respond with code 200" + contentId,"","","");
-  }
-  */
+  Scripter.Log("Received a response of '" + header.match(/[^\r\n]*/) + "'." + KNWeb.GetURL(0));
 
   if(/get/i.test(request) && /200/.test(header)) {
     return KNWeb.GetContent(0);
@@ -79,8 +79,9 @@ var verifyVideosInManifest = function(manifestUrl, format) {
   content = fetchContent(manifestUrl);
 
   if(typeof content == 'boolean') {
-    Scripter.SetError(-90404, true);
-    KNWeb.SetErrorDetails(-90404, "Manifest failed to download! (" + manifestUrl + ")" );
+    Scripter.Log("** FAILED on downloading manifest file");
+    errorLog.push("**ERROR** Manifest file missing - " + manifestUrl);
+    return failed;
   }
 
   Scripter.Log("Processing format(s): " + format);
@@ -149,8 +150,8 @@ var contentIds = new Array();
 var match = content.match(new RegExp(contentIdRegexp, 'gi'));
 
 if(!match) {
-  Scripter.SetError(-99503, true);
-  KNWeb.SetErrorDetails(-99503, "No video ids found in the supplied pano definition!");
+  Scripter.SetError(-99501, true);
+  KNWeb.SetErrorDetails(-99501, "No video ids found in the supplied pano definition!");
 }
 
 Scripter.Log("\nFound " + match.length + " video ids");
@@ -188,6 +189,6 @@ else {
 }
 
 if(errors) {
-  Scripter.SetError(-90404, true);
-  KNWeb.SetErrorDetails(-90404, "Some error occurred. See error log for details");
+  Scripter.SetError(-99215, true);
+  KNWeb.SetErrorDetails(-99215, "Some error occurred. See error log for details");
 }

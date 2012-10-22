@@ -1,14 +1,25 @@
+/**
+ * Iteration 2 (Oct 19, 2012)
+ * Sample script for Appex video live site monitoring
+ * Author: William Chen (wichen)
+ * 
+ * Known issues:
+ * - When a manifest file fails to download, the script halts and does not proceed checking other videos.
+ *   This is a bug with Keynote.
+ **/
+
 Scripter.Logging = 1;
 
 // ====
 // Variables
 var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)';
 var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid=";
-var numManifestServers = 5;
-var formatCode = ['1002', '103'];
-var filetype = 'mp4';
+var numManifestServers = 5;       // number of catalog server endpoints
+var formatCode = ['1002', '103']; // format codes specified by MSN and used in the apps
+var filetype = 'mp4';             // video filetype to check for in the manifest
 
 var errorLog = [];
+var errorSummary = '';
 var content = '';
 var contentIds = [];
 var contentTitles = {};
@@ -26,14 +37,6 @@ var contentTitles = {};
  **/
 var fetchContent = function(url, request) {
   request = typeof request == 'undefined'? 'get' : request;
-  /*
-  KNWeb.ClearSettings();
-  KNWeb.Error = 0;
-  KNWeb.ErrorDeferredStop = 0;
-  KNWeb.ErrorChecking = 0;
-  Scripter.Log("error: " + KNWeb.ErrorNumber);
-  Scripter.Log("deferred: " + KNWeb.ErrorDeferredStop);
-  */
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
@@ -71,7 +74,9 @@ var fetchManifestUrl = function(baseUrl) {
 }
 
 /**
- *
+ * Gets the title of the video, given the manifest content
+ * @param content(string): the manifest XML
+ * @return title of the video, if one is found. Else 'NA' is returned.
  **/
 var getTitle = function(content) {
   regex = new RegExp('<title>(.*?)<\/title>', 'im');
@@ -80,6 +85,17 @@ var getTitle = function(content) {
     return 'NA';
   }
   return title[1].replace(/^\s+|\s+$/g, '');
+}
+
+/**
+ * Get contentID from manifest url
+ * @param url(string): manifest url
+ * @return content id
+ **/
+var getContentId = function(url) {
+  match = url.match(/uuid=([0-9a-z-]*)/i);
+  if(!match) { return ''; }
+  return match[1];
 }
 
 /**
@@ -99,6 +115,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
   if(typeof content == 'boolean') {
     Scripter.Log("** FAILED on downloading manifest file");
     errorLog.push("**ERROR**\tManifest file missing - " + manifestUrl);
+    errorSummary += ' Manifest ' + getContentId(manifestUrl) + ' missing!';
     return failed;
   }
 
@@ -118,6 +135,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
     if(videoFiles.length != 1) {
       Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
       errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
+      errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
       parsingError = true;
       break;
     }
@@ -137,6 +155,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       if(videoUris.length != 1) {
         Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
         errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
+        errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
         parsingError = true;
         break;
       }
@@ -154,6 +173,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       errorLog.pop();
     }
     errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format);
+    errorSummary += ' Format ' + format + ' for ' + getContentId(manifestUrl);
   }
 
   return failed | parsingError;
@@ -207,17 +227,18 @@ for(i in contentTitles) {
 }
 
 // Display all the errors
-Scripter.Log("\n\n========\nError Log\n========");
+Scripter.Log("\n\n========\nError Log - " + errorLog.length + "\n========");
 if(errorLog.length < 1) {
   Scripter.Log("None.");
 }
 else {
   for(i in errorLog) {
-    Scripter.Log(+i+1 + ") " + errorLog[i]);
+    Scripter.Log(errorLog[i]);
   }
 }
 
 if(errors) {
+  Scripter.Log("Summary: " + errorSummary);
   Scripter.SetError(-99215, true);
-  KNWeb.SetErrorDetails(-99215, "Some error occurred. See error log for details");
+  KNWeb.SetErrorDetails(-99215, "ERRORS: " + errorSummary);
 }

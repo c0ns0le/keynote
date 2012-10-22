@@ -1,7 +1,5 @@
 /**
- * Iteration 2 (Oct 19, 2012)
  * Sample script for Appex video live site monitoring
- * Author: William Chen (wichen)
  * 
  * Known issues:
  * - When a manifest file fails to download, the script halts and does not proceed checking other videos.

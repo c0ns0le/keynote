@@ -50,7 +50,13 @@ var fetchContent = function(url, request) {
   }
 
   header = KNWeb.GetResponseHeaders(0);
-  Scripter.Log("Received a response of '" + header.match(/[^\r\n]*/) + "'.");
+  resp = header.match(/[^\r\n]*/);
+  if(resp) {
+    Scripter.Log("Received a response of '" + resp + "'.");
+  }
+  else {
+    Scripter.Log("No header response!");
+  }
 
   if(/get/i.test(request) && /200/.test(header)) {
     return KNWeb.GetContent(0);
@@ -103,7 +109,7 @@ var getContentId = function(url) {
 var verifyVideosInManifest = function(manifestUrl, format) {
   failed = true;
   parsingError = false;
-  format = typeof format === 'undefined'? ['*'] : format;
+  format = typeof format === 'undefined'? ['*'] : format;       // FIXME
   format = typeof format === 'string'? [format] : format;
   content = fetchContent(manifestUrl);
 
@@ -127,22 +133,22 @@ var verifyVideosInManifest = function(manifestUrl, format) {
     }
 
     // If there's more than one matching block (there shouldn't)
-    if(videoFiles.length != 1) {
+    if(videoFiles.length != 1 && format[i] != '*' ) {
       Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
       errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
       errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
       parsingError = true;
       break;
     }
-    else {
+
+    for(j=0; j<videoFiles.length; j++) {
       regex = new RegExp('http[^"]*\.' + filetype, 'gi');
-      videoUris = videoFiles[0].match(regex);
+      videoUris = videoFiles[j].match(regex);
 
       // If there's no matching block
       if(!videoUris) {
         Scripter.Log("*** FAILED on finding a matching video for format " + format[i] + ".");
         errorLog.push("**WARNING**\tNo " + filetype + " file for format code " + format[i] + " in manifest " + manifestUrl);
-        parsingError = true;
         continue;
       }
 

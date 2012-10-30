@@ -139,10 +139,10 @@ var parseJSON = function (content, index) {
           message: "Failed to parse string.",
           snippet: getSnippet(content, delimData.index)
         }
-      }                        
+      }
     } else if (delimData.delimiter === "{") {
       // Return an object.
-      var newObject = {}
+      var newObject = {};
 
       delimData = getNextDelimiter(content, delimData.index + 1);
       while (delimData.index >= 0 && delimData.delimiter !== "}") {

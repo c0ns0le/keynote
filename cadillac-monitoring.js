@@ -6,7 +6,8 @@ Scripter.Logging = 1;
 
 var errorLog = [];
 var errorSummary = '';
-var respCode = '';
+var response = '';
+var links = [];
 
 // ====
 // Functions
@@ -35,7 +36,7 @@ var fetchContent = function(url, request) {
   }
 
   header = KNWeb.GetResponseHeaders(0);
-  respCode = header;
+  response = header;
   resp = header.match(/[^\r\n]*/);
   if(resp) {
     Scripter.Log("Received a response of '" + resp + "'.");
@@ -50,38 +51,37 @@ var fetchContent = function(url, request) {
   return /200/.test(header);
 }
 
-/**
- * Chooses a random manifest endpoint from 1 to max, inclusive
- * @param baseUrl(string): url with %ENDPOINT% to hit a random server serving manifests.
- * @return random url
- **/
-var fetchManifestUrl = function(baseUrl) { 
-  serverEndpoint = Math.floor((Math.random()*numManifestServers)+1);
-  return manifestBaseUrl.replace("%ENDPOINT%", serverEndpoint);
-}
-
 // ====
 // Script
-url = "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS.js";
 
-panoJs = fetchContent(KNWeb.GetUrl(0));
-panoJs = panoJs.replace(/\\\//gm, '/');
-Scripter.Log("Response content length: " + panoJs.length);
+for(j=0;j<20;j++) {
+  num = j==0? '' : j;
+  url = "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS" + num + ".js";
 
-panoLinks = panoJs.match(/http:\/\/[\w\d\.\-\/]*/gi);
-if(!panoLinks) {
-  Scripter.SetError(-99501, true);
-  KNWeb.SetErrorDetails(-99501, "No URLs found! Is JSON empty?");
+  panoJs = fetchContent(url);
+  panoJs = panoJs.replace(/\\\//gm, '/');
+  Scripter.Log("Response content length: " + panoJs.length);
+
+  panoLinks = panoJs.match(/http:\/\/[\w\d\.\-\/]*/gi);
+  if(!panoLinks) {
+    Scripter.SetError(-99501, true);
+    KNWeb.SetErrorDetails(-99501, "No URLs found! Is JSON empty?");
+  }
+  Scripter.Log("Found " + panoLinks.length + " links.");
+  for(i in panoLinks) {
+    //Scripter.Log(+i+1 + ". " + panoLinks[i]);
+    if(/^http/.test(panoLinks[i])) {
+      links[panoLinks[i]] = '';
+    }
+  }
 }
-Scripter.Log("Checking " + panoLinks.length + " links: ");
-for(i in panoLinks) {
-  Scripter.Log(+i+1 + ". " + panoLinks[i]);
-}
 
-for(i=0; i<panoLinks.length; i++) {
-  if(!fetchContent(panoLinks[i], 'head')) {
-    errorLog.push("Head request for " + panoLinks[i] + " failed. Response is " + respCode);
-    errorSUmmary += panoLinks[i] + ' ';
+Scripter.Log("\nProcessing requests.");
+for(link in links) {
+  if(!fetchContent(link, 'head')) {
+    errorLog.push("Head request for " + link + " failed. Response is " + response);
+    errorSummary += link + ' ';
+    break; // TODO have to error out; keynote bug -- keynote is now in a failed state and won't continue making requests
   }
 }
 
@@ -98,8 +98,8 @@ else {
 
 if(errorLog.length > 0) {
   Scripter.Log("Summary: " + errorSummary);
-  Scripter.SetError(-99215, true);
-  KNWeb.SetErrorDetails(-99215, "ERRORS: " + errorSummary);
+  Scripter.SetError(-90404, true);
+  KNWeb.SetErrorDetails(-90404, "ERRORS: " + errorSummary);
 }
 
 //*/

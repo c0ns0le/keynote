@@ -45,6 +45,8 @@ var fetchContent = function(url, request) {
     Scripter.Log("No header response!");
   }
 
+  // TODO check content-length if there is one
+
   if(/get/i.test(request) && /200/.test(header)) {
     return KNWeb.GetContent(0);
   }

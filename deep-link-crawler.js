@@ -2,6 +2,7 @@ Scripter.Logging = 1;
 
 // ====
 // Variables
+var version = 2.002;    // smallest version number to require
 var deepLinks = [];
 var jsonUrls = [];
 var entryUrl = KNWeb.GetURL(0);
@@ -16,14 +17,19 @@ var parseJSON = function (content, index) { var delimData = getNextDelimiter(con
 
 var fetchContent = function(url, request) { request = typeof request == 'undefined'? 'get' : request; if(/head/i.test(request)) { Scripter.Log("Issuing HEAD request for: " + url); KNWeb.Head(url); } else { Scripter.Log ("Issuing GET request for: " + url); if(!KNWeb.Get(url)) { Scripter.SetError(-90404, true); KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0)); } } header = KNWeb.GetResponseHeaders(0); resp = header.match(/[^\r\n]*/); if(resp) { Scripter.Log("Received a response of '" + resp + "'."); } else { Scripter.Log("No header response!"); } if(/get/i.test(request) && /200/.test(header)) { return KNWeb.GetContent(0); } return /200/.test(header); }
 
+var setError = function(errorCode, description) {
+  Scripter.Log(description);
+  Scripter.SetError(errorCode, true);
+  KNWeb.SetErrorDetails(errorCode, description);
+}
+
 var isNull = function(obj) {
   return typeof obj == 'undefined';
 }
 
 var checkNull = function(obj, description) {
   if(isNull(obj)) {
-    Scripter.Log(description + " is null");
-    Scripter.SetError(-90404, true);
+    setError(-90404, description + " is null");
   }
 }
 
@@ -62,16 +68,33 @@ var extractDeepLink = function(json) {
       destinationUri = json['pages'][i]['modules'][j]['data']['destinationUri'].replace(/\\\//gm, '/');
       if(/^\/\/application/.test(destinationUri)) {
         var jsonUrl = deconstructDeepLink(destinationUri, entryUrl);
-        Scripter.Log("- Found deep link: " + destinationUri);
+        //Scripter.Log("- Found deep link: " + destinationUri);
         if(isNull(jsonUrls[jsonUrl])) {
-          Scripter.Log("--> Translated deep link to url: " + jsonUrl);
+          //Scripter.Log("--> Translated deep link to url: " + jsonUrl);
+          Scripter.Log("Translated deep link " + destinationUri + " to url: " + jsonUrl);
           jsonUrls[jsonUrl] = '';
         }
         else {
-          Scripter.Log("--> Duplicate!");
+          //Scripter.Log("--> Duplicate!");
         }
       }
     }
+  }
+}
+
+var checkVersion = function(json) {
+  checkNull(json['pano']);
+  checkNull(json['pano']['id']);
+  checkNull(json['version']);
+
+  var id = json['pano']['id'];
+  Scripter.Log("Checking version for " + id + " to be at least " + version.toFixed(4));
+  try {
+    var current = parseFloat(json['version']);
+  }
+  catch(err) { Scripter.Log("Version " + json['version'] + " is not number: ") + err.message; }
+  if(current < version) {
+    setError(-90505, "Expected: at least version " + version + ". Actual: " + current);
   }
 }
 
@@ -83,6 +106,7 @@ var crawl = function(url) {
   }
   catch(err) { Scripter.Log("Error parsing the JSON: " + err.message); }
   extractDeepLink(json);
+  checkVersion(json);
 
   for(jsonUrl in jsonUrls) {
     if(jsonUrls[jsonUrl] == 'checked') {

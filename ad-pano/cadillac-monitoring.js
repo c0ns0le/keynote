@@ -43,6 +43,7 @@ var fetchContent = function(url, request) {
   }
   else {
     Scripter.Log("No header response!");
+    return false;
   }
 
   // TODO check content-length if there is one

@@ -4,10 +4,16 @@
 
 Scripter.Logging = 1;
 
+// ====
+// Variables
 var errorLog = [];
 var errorSummary = '';
 var response = '';
 var links = [];
+var whitelistRegex = [];
+var hostWhitelist = ['\.bing\.com', 'video\.msn\.com', 'appexblu.*msn\.com', 'appex-rf\.msn\.com'];
+var baseUrl = "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS";
+var maxIndex = 20;
 
 // ====
 // Functions
@@ -19,48 +25,28 @@ var links = [];
  * @return content string if GET request is successful
  * @return boolean if HEAD request or GET is unsuccessful
  **/
-var fetchContent = function(url, request) {
-  request = typeof request == 'undefined'? 'get' : request;
+var fetchContent = function(url, request) { request = typeof request == 'undefined'? 'get' : request; if(/head/i.test(request)) { Scripter.Log("Issuing HEAD request for: " + url); KNWeb.Head(url); } else { Scripter.Log ("Issuing GET request for: " + url); if(!KNWeb.Get(url)) { Scripter.SetError(-90404, true); KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0)); } } header = KNWeb.GetResponseHeaders(0); response = header; resp = header.match(/[^\r\n]*/); if(resp) { Scripter.Log("Received a response of '" + resp + "'."); } else { Scripter.Log("No header response!"); return false; } if(/get/i.test(request) && /200/.test(header)) { return KNWeb.GetContent(0); } return /200/.test(header); }
 
-  if(/head/i.test(request)) {
-    Scripter.Log("Issuing HEAD request for: " + url);
-    KNWeb.Head(url);
+var isWhitelisted = function(url) {
+  whitelisted = false;
+  for(i in whitelistRegex) {
+    whitelisted |= whitelistRegex[i].test(url);
   }
-  else {
-    Scripter.Log ("Issuing GET request for: " + url);
-    // TODO has to fail here, Keynote sucks
-    if(!KNWeb.Get(url)) {
-      Scripter.SetError(-90404, true);
-      KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0));
-    }
-  }
-
-  header = KNWeb.GetResponseHeaders(0);
-  response = header;
-  resp = header.match(/[^\r\n]*/);
-  if(resp) {
-    Scripter.Log("Received a response of '" + resp + "'.");
-  }
-  else {
-    Scripter.Log("No header response!");
-    return false;
-  }
-
-  // TODO check content-length if there is one
-
-  if(/get/i.test(request) && /200/.test(header)) {
-    return KNWeb.GetContent(0);
-  }
-  return /200/.test(header);
+  return whitelisted;
 }
 
 // ====
 // Script
 
-for(j=0;j<20;j++) {
-  num = j==0? '' : j;
-  url = "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS" + num + ".js";
+for(i in hostWhitelist) {
+  whitelistRegex.push(new RegExp('http:\/\/.*' + hostWhitelist[i], 'i'));
+}
 
+for(j=0;j<maxIndex;j++) {
+  num = j==0? '' : j;
+  url = baseUrl + num + ".js";
+
+  if(!isWhitelisted(url)) { continue; }
   panoJs = fetchContent(url);
   panoJs = panoJs.replace(/\\\//gm, '/');
   Scripter.Log("Response content length: " + panoJs.length);

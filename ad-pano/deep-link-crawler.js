@@ -1,3 +1,10 @@
+/*
+ * Cadillac deep link crawler
+ * Finds deep links within the entrypoint json and traverse through to:
+ *  1) make sure there's no invalid deeplinks
+ *  2) check version number
+ */
+
 Scripter.Logging = 1;
 
 // ====

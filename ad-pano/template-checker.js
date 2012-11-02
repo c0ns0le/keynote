@@ -1,3 +1,8 @@
+/*
+ * Cadillac template checker
+ * Pings the template(js,html,css) files with a blank json
+ */
+
 Scripter.Logging = 1;
 
 // ====

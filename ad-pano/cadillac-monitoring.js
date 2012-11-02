@@ -1,6 +1,6 @@
 /**
  * Cloud Pano (Cadillac) Monitoring
- * HEAD requests on all assets in the 19 cadillac jsons
+ * HEAD requests on all image and video assets in the 19 cadillac jsons
  **/
 
 Scripter.Logging = 1;

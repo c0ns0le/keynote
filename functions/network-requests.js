@@ -28,6 +28,7 @@ var fetchContent = function(url, request) {
   }
   else {
     Scripter.Log("No header response!");
+    return false;
   }
 
   if(/get/i.test(request) && /200/.test(header)) {

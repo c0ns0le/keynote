@@ -2,9 +2,6 @@ Scripter.Logging = 1;
 
 // ====
 // Variables
-var version = 2.004;    // smallest version number to require
-var deepLinks = [];
-var jsonUrls = [];
 var entryUrl = KNWeb.GetURL(0);
 
 // ====
@@ -33,97 +30,30 @@ var checkNull = function(obj, description) {
   }
 }
 
-var deconstructDeepLink = function(deeplink, url) {
-  // Make sure it is a cloud pano deep link
-  if(!(/^\/\/application/.test(deeplink) && /entitytype=cloudPano/.test(deeplink))) {
-    return ''
-  }
-  var campaign = deeplink.match(/campaign=([\w\n_-]*)/);
-  checkNull(campaign, "campaign ID for " + deeplink);
-  checkNull(campaign[1], "campaign ID for " + deeplink);
+var pingTemplates = function(json) {
+  checkNull(json['template']);
+  checkNull(json['template']['templateFile']);
+  checkNull(json['template']['cssFile']);
+  checkNull(json['template']['htmlFile']);
 
-  var index = deeplink.match(/index=([\w\n_-]*)/);
-  checkNull(index, "index for " + deeplink);
-  checkNull(index[1], "index for " + deeplink);
-
-  return url.replace(/\/[^\/]*\.js/, '/' + campaign[1] + index[1] + '.js');
-}
-
-var extractDeepLink = function(json) {
-  // json['pages'][0]['modules'][0]['data']['destinationUri']
-  checkNull(json, "JSON definition");
-  checkNull(json['pages'], "Pages");
-
-  for(i in json['pages']) {
-    checkNull(json['pages'][i], "Page definition");
-    checkNull(json['pages'][i]['modules'], "Modules");
-
-    for(j in json['pages'][i]['modules']) {
-      checkNull(json['pages'][i]['modules'][j], "Module definition");
-      checkNull(json['pages'][i]['modules'][j]['data'], "Module data");
-
-      if(isNull(json['pages'][i]['modules'][j]['data']['destinationUri'])) {
-        continue;
-      }
-      destinationUri = json['pages'][i]['modules'][j]['data']['destinationUri'].replace(/\\\//gm, '/');
-      if(/^\/\/application/.test(destinationUri)) {
-        var jsonUrl = deconstructDeepLink(destinationUri, entryUrl);
-        //Scripter.Log("- Found deep link: " + destinationUri);
-        if(isNull(jsonUrls[jsonUrl])) {
-          //Scripter.Log("--> Translated deep link to url: " + jsonUrl);
-          Scripter.Log("Translated deep link " + destinationUri + " to url: " + jsonUrl);
-          jsonUrls[jsonUrl] = '';
-        }
-        else {
-          //Scripter.Log("--> Duplicate!");
-        }
-      }
-    }
+  if(! fetchContent(json['template']['templateFile'].replace(/\\\//gm, '/'), 'head') ||
+     ! fetchContent(json['template']['cssFile'].replace(/\\\//gm, '/'), 'head') || 
+     ! fetchContent(json['template']['htmlFile'].replace(/\\\//gm, '/'), 'head')) {
+    setError(KNWeb.ErrorNumber, "One of template (html,css,js) files cannot be pinged!");
   }
 }
-
-var checkVersion = function(json) {
-  checkNull(json['pano']);
-  checkNull(json['pano']['id']);
-  checkNull(json['version']);
-
-  var id = json['pano']['id'];
-  Scripter.Log("Checking version for " + id + " to be at least " + version.toFixed(4));
-  try {
-    var current = parseFloat(json['version']);
-  }
-  catch(err) { Scripter.Log("Version " + json['version'] + " is not number: ") + err.message; }
-  if(current < version) {
-    setError(-90505, "Expected: at least version " + version + ". Actual: " + current);
-  }
-}
-
-var crawl = function(url) {
-  var content = fetchContent(url);
-  if(!content) {
-    setError(KNWeb.ErrorNumber, url + " failed to download!");
-  }
-  Scripter.Log("Response content length: " + content.length);
-  try {
-    var json = parseJSON(content,0).value;
-  }
-  catch(err) { Scripter.Log("Error parsing the JSON: " + err.message); }
-  // here is the entrypoint to do whatever validations and checks we want with the jsons
-  extractDeepLink(json);
-  checkVersion(json);
-
-  for(jsonUrl in jsonUrls) {
-    if(jsonUrls[jsonUrl] == 'checked') {
-      continue;
-    }
-    Scripter.Log("Fetching json from " + jsonUrl);
-    jsonUrls[jsonUrl] = 'checked';
-    crawl(jsonUrl);
-  }
-}
-
 
 // ====
 // Script
-jsonUrls[entryUrl] = 'checked';
-crawl(entryUrl)
+
+var content = fetchContent(entryUrl);
+if(!content) {
+  setError(KNWeb.ErrorNumber, url + " failed to download!");
+}
+Scripter.Log("Response content length: " + content.length);
+try {
+  var json = parseJSON(content,0).value;
+}
+catch(err) { Scripter.Log("Error parsing the JSON: " + err.message); }
+
+pingTemplates(json);

@@ -20,7 +20,7 @@ var contentIds = [];
 var whitelistRegex = [];
 var hostWhitelist = ['\.bing\.com', 'video\.msn\.com', 'appexblu.*msn\.com', 'appex-rf\.msn\.com'];
 var baseUrl = "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS";
-var maxIndex = 5;
+var maxIndex = 20;
 
 // ====
 // Functions

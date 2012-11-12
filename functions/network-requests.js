@@ -1,38 +1,47 @@
+var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); }
+var isNull = function(obj) { return typeof obj == 'undefined'; }
+var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } }
+var isEmptyOrNull = function(obj) { if(isNull) { return true; } if(typeof obj == 'string' && obj == '') { return true; } return false; }
+
 /**
  * Performs a HEAD or GET request
  * @param url(string): url to request
  * @param request(string): 'get' or 'head' request
- * @return content string if GET request is successful
- * @return boolean if HEAD request or GET is unsuccessful
+ * @return content string if request is successful
+ * @return empty string is request is not successful
  **/
 var fetchContent = function(url, request) {
   var request = typeof request == 'undefined'? 'get' : request;
+  var result;
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
-    KNWeb.Head(url);
+    result = KNWeb.Head(url);
   }
   else {
     Scripter.Log ("Issuing GET request for: " + url);
-    // TODO has to fail here, Keynote sucks
-    if(!KNWeb.Get(url)) {
-      Scripter.SetError(-90404, true);
-      KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0));
-    }
+    result = KNWeb.Get(url);
+  }
+
+  if(!result) {
+    KNWeb.SessionRC = true;
+    Scripter.Log("Failed to do a " + request + " request for " + url);
+    return '';
   }
 
   var header = KNWeb.GetResponseHeaders(0);
+  if(isEmptyOrNull(header)) { return '' }
   var resp = header.match(/[^\r\n]*/);
   if(resp) {
     Scripter.Log("Received a response of '" + resp + "'.");
   }
   else {
     Scripter.Log("No header response!");
-    return false;
+    return '';
   }
 
   if(/get/i.test(request) && /200/.test(header)) {
     return KNWeb.GetContent(0);
   }
-  return /200/.test(header);
+  return header;
 }

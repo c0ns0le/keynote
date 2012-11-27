@@ -14,7 +14,7 @@ out_line = ''
 for in_line in in_f:
   line = re.sub(r'\n', '', in_line)                                     # end of line
   line = re.sub(r'^[\s]*\/\/.*', '', line)                              # comments
-  line = re.sub(r';[\s]+\/\/.*', '', line)                              # inline comments
+  line = re.sub(r';[\s]+\/\/.*', ';', line)                             # inline comments
   line = re.sub(r'^[\s]*(var.*function.*(\{|\}))[\s]*$', r'\n\1', line) # functions on its own line
   out_line += line + ' '
 

@@ -14,9 +14,10 @@ out_line = ''
 for in_line in in_f:
   line = re.sub(r'\n', '', in_line)
   line = re.sub(r'^[\s]*\/\/.*', '', line)
-  line = re.sub(r'^[\s]*(var.*\{)[\s]*$', r'\n\1', line)
+  line = re.sub(r'^[\s]*(var.*(\{|\}))[\s]*$', r'\n\1', line)
   out_line += line + ' '
 
+out_line = re.sub(r'\/\*.*\*\/', '', out_line)
 out_line = re.sub(r'[\t ]+', ' ', out_line).strip()
 
 out_f.write(out_line)

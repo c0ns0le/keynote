@@ -1,3 +1,8 @@
+/* ==================
+ * JSON PARSER
+ * Provided by Alexander Nip
+ * ================== */
+
 var extractString = function (content, startIndex) {
   var index = content.indexOf("\"", startIndex);
   var value = null;

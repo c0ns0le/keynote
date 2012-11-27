@@ -1,3 +1,8 @@
+/* ==================
+ * Video monitoring
+ * Provided by William Chen
+ * ================== */
+
 // ====
 // Variables
 var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)';

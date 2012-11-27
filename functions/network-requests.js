@@ -14,6 +14,8 @@ var fetchContent = function(url, request) {
   var request = typeof request == 'undefined'? 'get' : request;
   var result;
 
+  KNWeb.SessionRC = true;
+
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
     result = KNWeb.Head(url);
@@ -23,16 +25,12 @@ var fetchContent = function(url, request) {
     result = KNWeb.Get(url);
   }
 
-  if(!result) {
-    KNWeb.SessionRC = true;
-    Scripter.Log("Failed to do a " + request + " request for " + url);
-    return '';
-  }
+  if(!result) { return ''; }
 
   var header = KNWeb.GetResponseHeaders(0);
   if(isEmptyOrNull(header)) { return '' }
   var resp = header.match(/[^\r\n]*/);
-  if(resp) {
+  if(!isEmptyOrNull(resp)) {
     Scripter.Log("Received a response of '" + resp + "'.");
   }
   else {

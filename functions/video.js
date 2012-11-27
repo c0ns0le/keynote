@@ -115,7 +115,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
   }
 
   Scripter.Log("Processing format(s): " + format);
-  for(i=0; i<format.length; i++) {
+  for(var i=0; i<format.length; i++) {
     regex = new RegExp('<videoFile formatCode="' + format[i] + '".*?<\/videoFile>', 'gim');
     videoFiles = content.match(regex);
 
@@ -135,7 +135,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       break;
     }
 
-    for(j=0; j<videoFiles.length; j++) {
+    for(var j=0; j<videoFiles.length; j++) {
       regex = new RegExp('http[^"]*\.' + filetype, 'gi');
       videoUris = videoFiles[j].match(regex);
 
@@ -168,7 +168,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
 
   // if videos all fail in the manifest, raise the error level
   if(failed) {
-    for(i=0; i<format.length; i++) {
+    for(var i=0; i<format.length; i++) {
       errorLog.pop();
     }
     errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format);

@@ -4,7 +4,7 @@ import re
 
 #
 in_fname = sys.argv[1]
-out_fname = re.sub(r'(\.\w*$)', r'-compressed\1', in_fname)
+out_fname = re.sub(r'(\.\w*$)', r'.min\1', in_fname)
 
 # open the file
 in_f = open(in_fname, 'r')

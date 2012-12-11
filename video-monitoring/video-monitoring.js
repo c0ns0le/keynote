@@ -10,58 +10,64 @@ Scripter.Logging = 1;
 
 // ====
 // Variables
-var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)';
-var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid=";
-var numManifestServers = 5;       // number of catalog server endpoints
-var formatCode = ['1002', '103']; // format codes specified by MSN and used in the apps
-var filetype = '(mp4|wmv)';       // video filetype to check for in the manifest
-
 var errorLog = [];
 var errorSummary = '';
 var content = '';
 var contentIds = [];
 var contentTitles = {};
 
+/* START OF VIDEO.JS */
+var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)';
+var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid=";
+var numManifestServers = 5;       // number of catalog server endpoints
+var formatCode = ['1002', '103']; // format codes specified by MSN and used in the apps
+var filetype = '(mp4|wmv)';       // video filetype to check for in the manifest
 
-// ====
-// Functions
+
+var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); }
+var isNull = function(obj) { return typeof obj == 'undefined'; }
+var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } }
+var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' && obj == '') { return true; } return false; }
 
 /**
  * Performs a HEAD or GET request
  * @param url(string): url to request
  * @param request(string): 'get' or 'head' request
- * @return content string if GET request is successful
- * @return boolean if HEAD request or GET is unsuccessful
+ * @return content string if request is successful
+ * @return empty string is request is not successful
  **/
 var fetchContent = function(url, request) {
-  request = typeof request == 'undefined'? 'get' : request;
+  var request = typeof request == 'undefined'? 'get' : request;
+  var result;
+
+  KNWeb.SessionRC = true;
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
-    KNWeb.Head(url);
+    result = KNWeb.Head(url);
   }
   else {
     Scripter.Log ("Issuing GET request for: " + url);
-    // TODO has to fail here, Keynote sucks
-    if(!KNWeb.Get(url)) {
-      Scripter.SetError(-90404, true);
-      KNWeb.SetErrorDetails(-90404, "** ERROR: Failed to get content for url: " + KNWeb.GetURL(0));
-    }
+    result = KNWeb.Get(url);
   }
 
-  header = KNWeb.GetResponseHeaders(0);
-  resp = header.match(/[^\r\n]*/);
-  if(resp) {
+  if(!result) { return ''; }
+
+  var header = KNWeb.GetResponseHeaders(0);
+  if(isEmptyOrNull(header)) { return '' }
+  var resp = header.match(/[^\r\n]*/);
+  if(!isEmptyOrNull(resp)) {
     Scripter.Log("Received a response of '" + resp + "'.");
   }
   else {
     Scripter.Log("No header response!");
+    return '';
   }
 
   if(/get/i.test(request) && /200/.test(header)) {
     return KNWeb.GetContent(0);
   }
-  return /200/.test(header);
+  return header;
 }
 
 /**
@@ -107,13 +113,14 @@ var getContentId = function(url) {
  * @return boolean if there were errors
  **/
 var verifyVideosInManifest = function(manifestUrl, format) {
+  pingVideoEndpoint = false;                                    // don't make HEAD requests on video URLs to reduce number of endpoints
   failed = true;
   parsingError = false;
   format = typeof format === 'undefined'? ['*'] : format;       // FIXME
   format = typeof format === 'string'? [format] : format;
   content = fetchContent(manifestUrl);
 
-  if(typeof content == 'boolean') {
+  if(isEmptyOrNull(content)) {
     Scripter.Log("** FAILED on downloading manifest file");
     errorLog.push("**ERROR**\tManifest file missing - " + manifestUrl);
     errorSummary += ' Manifest ' + getContentId(manifestUrl) + ' missing!';
@@ -121,7 +128,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
   }
 
   Scripter.Log("Processing format(s): " + format);
-  for(i=0; i<format.length; i++) {
+  for(var i=0; i<format.length; i++) {
     regex = new RegExp('<videoFile formatCode="' + format[i] + '".*?<\/videoFile>', 'gim');
     videoFiles = content.match(regex);
 
@@ -141,7 +148,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       break;
     }
 
-    for(j=0; j<videoFiles.length; j++) {
+    for(var j=0; j<videoFiles.length; j++) {
       regex = new RegExp('http[^"]*\.' + filetype, 'gi');
       videoUris = videoFiles[j].match(regex);
 
@@ -162,7 +169,11 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       }
       else {
         Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[0]);
-        fetchContent(videoUris[0], 'head');
+        if(pingVideoEndpoint && isEmptyOrNull(fetchContent(videoUris[0], 'head'))) {
+          errorLog.push("Head request for " + videoUris[0] + " failed. Error code " + KNWeb.ErrorNumber);
+          errorSummary += KNWeb.ErrorNumber + ' ' + videoUris[0] + ' ';
+          errors = true;
+        }
       }
     }
     failed = false;
@@ -170,15 +181,18 @@ var verifyVideosInManifest = function(manifestUrl, format) {
 
   // if videos all fail in the manifest, raise the error level
   if(failed) {
-    for(i=0; i<format.length; i++) {
+    for(var i=0; i<format.length; i++) {
       errorLog.pop();
     }
     errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format);
     errorSummary += ' Format ' + format + ' for ' + getContentId(manifestUrl);
   }
 
-  return failed | parsingError;
+  return failed || parsingError;
 }
+
+/* END OF VIDEO.JS */
+
 
 // ====
 // Script

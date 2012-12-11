@@ -22,5 +22,6 @@ out_line = re.sub(r'\/\*.*\*\/', '', out_line)
 out_line = re.sub(r'[\t ]+', ' ', out_line).strip()
 
 out_f.write(out_line)
+out_f.write("\n")
 out_f.close()
 in_f.close()

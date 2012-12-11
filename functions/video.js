@@ -101,6 +101,7 @@ var getContentId = function(url) {
  * @return boolean if there were errors
  **/
 var verifyVideosInManifest = function(manifestUrl, format) {
+  pingVideoEndpoint = false;                                    // don't make HEAD requests on video URLs to reduce number of endpoints
   failed = true;
   parsingError = false;
   format = typeof format === 'undefined'? ['*'] : format;       // FIXME
@@ -156,7 +157,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       }
       else {
         Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[0]);
-        if(isEmptyOrNull(fetchContent(videoUris[0], 'head'))) {
+        if(pingVideoEndpoint && isEmptyOrNull(fetchContent(videoUris[0], 'head'))) {
           errorLog.push("Head request for " + videoUris[0] + " failed. Error code " + KNWeb.ErrorNumber);
           errorSummary += KNWeb.ErrorNumber + ' ' + videoUris[0] + ' ';
           errors = true;

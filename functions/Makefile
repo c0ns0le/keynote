@@ -6,7 +6,8 @@ all: all.js
 	./compress.py $<
 
 all.js: $(OBJS)
-	cat $^ > $@
+	echo "// Generated `date`" > $@
+	cat $^ >> $@
 
 clean:
 	rm -rf *.min.js

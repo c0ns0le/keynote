@@ -12,7 +12,7 @@ var entryUrl = KNWeb.GetURL(0);
 // ====
 // Functions
 var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); } 
-var isNull = function(obj) { return typeof obj == 'undefined'; } 
+var isNull = function(obj) { return obj == undefined; } 
 var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } } 
 var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' && obj == '') { return true; } return false; } 
 

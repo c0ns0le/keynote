@@ -12,7 +12,7 @@ var formatCode = ['1002', '103']; // format codes specified by MSN and used in t
 var filetype = '(mp4|wmv)';       // video filetype to check for in the manifest
 
 
-var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); }
+var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, 'ERROR', description); }
 var isNull = function(obj) { return obj == undefined; }
 var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } }
 var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' && obj == '') { return true; } return false; }
@@ -21,14 +21,17 @@ var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof o
  * Performs a HEAD or GET request
  * @param url(string): url to request
  * @param request(string): 'get' or 'head' request
+ * @param retry(int): number of times to retry
  * @return content string if request is successful
  * @return empty string is request is not successful
  **/
-var fetchContent = function(url, request) {
-  var request = typeof request == 'undefined'? 'get' : request;
+var fetchContent = function(url, request, retry) {
+  var request = request == undefined? 'get' : request;
+  var retry = retry == undefined? 3 : retry;
   var result;
 
   KNWeb.SessionRC = true;
+  retry--;
 
   if(/head/i.test(request)) {
     Scripter.Log("Issuing HEAD request for: " + url);
@@ -39,17 +42,25 @@ var fetchContent = function(url, request) {
     result = KNWeb.Get(url);
   }
 
-  if(!result) { return ''; }
+  if(!result) { 
+    if(retry < 0) { return ''; }
+    return fetchContent(url, request, retry-1);
+  }
 
   var header = KNWeb.GetResponseHeaders(0);
-  if(isEmptyOrNull(header)) { return '' }
+  if(isEmptyOrNull(header)) { 
+    // TODO Fix Invalid Server Response
+    //if(retry < 0) { return ''; }
+    if(retry < 0) { return 'empty header'; }
+    return fetchContent(url, request, retry-1);
+  }
   var resp = header.match(/[^\r\n]*/);
-  if(!isEmptyOrNull(resp)) {
-    Scripter.Log("Received a response of '" + resp + "'.");
+  if(isEmptyOrNull(resp)) {
+    if(retry < 0) { Scripter.Log("No header response!"); return ''; }
+    return fetchContent(url, request, retry-1);
   }
   else {
-    Scripter.Log("No header response!");
-    return '';
+    Scripter.Log("Received a response of '" + resp + "'.");
   }
 
   if(/get/i.test(request) && /200/.test(header)) {
@@ -106,12 +117,13 @@ var verifyVideosInManifest = function(manifestUrl, format) {
   parsingError = false;
   format = typeof format === 'undefined'? ['*'] : format;       // FIXME
   format = typeof format === 'string'? [format] : format;
-  content = fetchContent(manifestUrl);
 
+  content = fetchContent(manifestUrl);
   if(isEmptyOrNull(content)) {
     Scripter.Log("** FAILED on downloading manifest file");
     errorLog.push("**ERROR**\tManifest file missing - " + manifestUrl);
-    errorSummary += ' Manifest ' + getContentId(manifestUrl) + ' missing!';
+    //errorSummary += ' Manifest ' + getContentId(manifestUrl) + ' missing!';
+    errorSummary += getContentId(manifestUrl) + '; ';
     return failed;
   }
 
@@ -131,7 +143,8 @@ var verifyVideosInManifest = function(manifestUrl, format) {
     if(videoFiles.length != 1 && format[i] != '*' ) {
       Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
       errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
-      errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
+      //errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
+      errorSummary += getContentId(manifestUrl) + '; ';
       parsingError = true;
       break;
     }
@@ -151,7 +164,8 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       if(videoUris.length != 1) {
         Scripter.Log("** PARSING ERROR on manifest " + manifestUrl);
         errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl);
-        errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
+        //errorSummary += ' Error parsing manifest ' + getContentId(manifestUrl);
+        errorSummary += getContentId(manifestUrl) + '; ';
         parsingError = true;
         break;
       }
@@ -159,7 +173,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
         Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[0]);
         if(pingVideoEndpoint && isEmptyOrNull(fetchContent(videoUris[0], 'head'))) {
           errorLog.push("Head request for " + videoUris[0] + " failed. Error code " + KNWeb.ErrorNumber);
-          errorSummary += KNWeb.ErrorNumber + ' ' + videoUris[0] + ' ';
+          //errorSummary += KNWeb.ErrorNumber + ' ' + videoUris[0] + ' ';
           errors = true;
         }
       }
@@ -173,7 +187,7 @@ var verifyVideosInManifest = function(manifestUrl, format) {
       errorLog.pop();
     }
     errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format);
-    errorSummary += ' Format ' + format + ' for ' + getContentId(manifestUrl);
+    errorSummary += ' No ' + format + ' for ' + getContentId(manifestUrl);
   }
 
   return failed || parsingError;

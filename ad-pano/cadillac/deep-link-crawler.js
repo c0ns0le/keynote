@@ -10,15 +10,19 @@ Scripter.Logging = 1;
 // ====
 // Variables
 var version = 2.005;    // smallest version number to require
+var country = "ca";     // us or ca
 var deepLinks = [];
 var jsonUrls = [];
 var entryUrl = KNWeb.GetURL(0);
+
+var us = ["CadillacATS_EN-US_Home", "CadillacATS_EN-US_Patagonia", "CadillacATS_EN-US_Morocco", "CadillacATS_EN-US_Monaco", "CadillacATS_EN-US_China", "CadillacATS_EN-US_Patagonia_SS0", "CadillacATS_EN-US_Patagonia_SS1", "CadillacATS_EN-US_Patagonia_SS2", "CadillacATS_EN-US_Morocco_SS0", "CadillacATS_EN-US_Morocco_SS1", "CadillacATS_EN-US_Morocco_SS2", "CadillacATS_EN-US_Morocco_SS3", "CadillacATS_EN-US_Monaco_SS0", "CadillacATS_EN-US_Monaco_SS1", "CadillacATS_EN-US_Monaco_SS2", "CadillacATS_EN-US_Monaco_SS3", "CadillacATS_EN-US_China_SS0", "CadillacATS_EN-US_China_SS1", "CadillacATS_EN-US_China_SS2", "CadillacATS_EN-US_China_SS3"];
+var ca = ["CadillacATS_en-ca_Home", "CadillacATS_en-ca_Patagonia", "CadillacATS_en-ca_Morocco", "CadillacATS_en-ca_Monaco", "CadillacATS_en-ca_China", "CadillacATS_en-ca_Patagonia_SS0", "CadillacATS_en-ca_Patagonia_SS1", "CadillacATS_en-ca_Patagonia_SS2", "CadillacATS_en-ca_Morocco_SS0", "CadillacATS_en-ca_Morocco_SS1", "CadillacATS_en-ca_Morocco_SS2", "CadillacATS_en-ca_Morocco_SS3", "CadillacATS_en-ca_Monaco_SS0", "CadillacATS_en-ca_Monaco_SS1", "CadillacATS_en-ca_Monaco_SS2", "CadillacATS_en-ca_Monaco_SS3", "CadillacATS_en-ca_China_SS0", "CadillacATS_en-ca_China_SS1", "CadillacATS_en-ca_China_SS2", "CadillacATS_en-ca_China_SS3"];
 
 // ====
 // Functions
 var contentIdRegexp = '\/view\\?entitytype=video\&contentId=([^"&]*)'; var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid="; var numManifestServers = 5; var formatCode = ['1002', '103']; var filetype = '(mp4|wmv)'; 
 var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); } 
-var isNull = function(obj) { return obj == undefined; } 
+var isNull = function(obj) { return obj == undefined } 
 var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } } 
 var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' && obj == '') { return true; } return false; } 
 var fetchContent = function(url, request) { var request = typeof request == 'undefined'? 'get' : request; var result; KNWeb.SessionRC = true; if(/head/i.test(request)) { Scripter.Log("Issuing HEAD request for: " + url); result = KNWeb.Head(url); } else { Scripter.Log ("Issuing GET request for: " + url); result = KNWeb.Get(url); } if(!result) { return ''; } var header = KNWeb.GetResponseHeaders(0); if(isEmptyOrNull(header)) { return '' } var resp = header.match(/[^\r\n]*/); if(!isEmptyOrNull(resp)) { Scripter.Log("Received a response of '" + resp + "'."); } else { Scripter.Log("No header response!"); return ''; } if(/get/i.test(request) && /200/.test(header)) { return KNWeb.GetContent(0); } return header; } 
@@ -97,6 +101,20 @@ var checkVersion = function(json) {
   }
 }
 
+var checkPanoId = function(json, url) {
+  checkNull(json['pano']);
+  checkNull(json['pano']['id']);
+  var index = url.match(/cadillacATS([0-9]+)\.js/);
+  index = isNull(index)? 0 : index[1];
+  checkNull(index);
+  var panoId = json['pano']['id'];
+  var panoIdCheck = country == 'us' ? us[index] : '';
+      panoIdCheck = country == 'ca' ? ca[index] : panoIdCheck;
+  if (panoId != panoIdCheck) {
+    setError(-90505, "Pano ID does not match for " + index + ". Should be " + panoIdCheck + ". Got " + panoId);
+  }
+}
+
 var crawl = function(url) {
   var content = fetchContent(url);
   if(!content) {
@@ -110,6 +128,7 @@ var crawl = function(url) {
   // here is the entrypoint to do whatever validations and checks we want with the jsons
   extractDeepLink(json);
   checkVersion(json);
+  checkPanoId(json, url);
 
   for(jsonUrl in jsonUrls) {
     if(jsonUrls[jsonUrl] == 'checked') {

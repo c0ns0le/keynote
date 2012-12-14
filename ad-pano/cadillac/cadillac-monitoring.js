@@ -7,11 +7,14 @@ Scripter.Logging = 1;
 
 // ====
 // Variables
-var country = "ca"
+var country = "ca";
+var startIndex = 0;
+var endIndex = 10;
 var hostWhitelist = ['\.bing\.com', 'video\.msn\.com', 'appexblu\.stb\.s-msn\.com', 'appex-rf\.msn\.com'];
-var baseUrl = country == "en" ? "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS" : '';
-    baseUrl = country == "ca" ? "http://en-ca.appex-rf.msn.com/cp/v1/en-ca/Ad/cadillacATS" : '';
-var maxIndex = 20;
+var baseUrl = country == "us" ? "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS" : '';
+    baseUrl = country == "ca" ? "http://en-ca.appex-rf.msn.com/cp/v1/en-ca/Ad/cadillacATS" : baseUrl;
+var numPingLinks = 50;
+var numPingVideos = 30;
 
 var errors = false;
 var errorLog = [];
@@ -48,6 +51,33 @@ var isWhitelisted = function(url) {
   return whitelisted;
 }
 
+/*
+var randomDownsize = function(elems, size) {
+  if(size <= elems) { return elems; }
+  var lottery = [];
+  var range = [[0,elems.length-1]];
+  while(lottery.length < size) {
+    var t_range = [];
+    for(var r in range) {
+      i = range[r];
+      if(i[0] > i[1]) { continue; }
+      var ball = i[0] + Math.floor(Math.random()*(i[1]-i[0]+1));
+      lottery.push(ball);
+      if(lottery.length == size) { break; }
+      if(ball != 0)    { t_range.push([i[0], ball-1]); }
+      if(ball != size) { t_range.push([ball+1, i[1]]); }
+    }
+    range = t_range;
+  }
+
+  var ret = [];
+  for(ball in lottery) {
+    ret.push(elems[lottery[ball]]);
+  }
+  return ret;
+}
+*/
+
 
 // ====
 // Script
@@ -55,7 +85,7 @@ for(var i in hostWhitelist) {
   whitelistRegex.push(new RegExp('http:\/\/.*' + hostWhitelist[i], 'i'));
 }
 
-for(var j=0;j<maxIndex;j++) {
+for(var j=startIndex;j<endIndex;j++) {
   num = j==0? '' : j;
   url = baseUrl + num + ".js";
 
@@ -97,6 +127,8 @@ for(var j=0;j<maxIndex;j++) {
 }
 
 Scripter.Log("\nProcessing requests.");
+//Scripter.Log("Cherry picking " + numPingLinks + " links to ping, " + numPingVideos + " videos to ping.");
+//links = randomDownsize(links, numPingLinks);
 for(var link in links) {
   if(isEmptyOrNull(fetchContent(link, 'head'))) {
     errorLog.push("Head request for " + link + " failed. Error code " + KNWeb.ErrorNumber);
@@ -104,6 +136,7 @@ for(var link in links) {
     error = true;
   }
 }
+//contentIds = randomDownsize(contentIds, numPingVideos);
 for(var contentId in contentIds) {
   manifestUrl = fetchManifestUrl(manifestBaseUrl)+contentId;
   manifestError = verifyVideosInManifest(manifestUrl, formatCode);
@@ -128,7 +161,7 @@ else {
 
 if(errors) {
   Scripter.Log("Summary: " + errorSummary);
-  setError(99900, errorSummary);
+  setError(-99900, errorSummary);
 }
 
 //*/

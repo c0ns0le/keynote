@@ -13,9 +13,6 @@ var baseUrl = country == "en" ? "http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/ca
     baseUrl = country == "ca" ? "http://en-ca.appex-rf.msn.com/cp/v1/en-ca/Ad/cadillacATS" : '';
 var maxIndex = 20;
 
-var us2005 = ["387f3a16bc03548fb783008a28d44cc8", "dee8285685f7fd66214ee1673a4b76b8", "f12b0cd161c4bc08e2fd38459882a641", "23393009b2891f9b122513735fcfb593", "6ae450b36b1f5a743bc845535158fb1c", "c9f0746d4ca0274981ba85863d6c3650", "ee454cb5aa36d64b58921a1d6713c36c", "39b0c7d3181d0827e01451016b038c87", "5a4d99a935dc15998261379382f17678", "f8988cc8ebc99e806a8a6e9e1b0facbd", "4524e28f0da743eee7e6cdcaa2efbb24", "337a13db6be4e8dc023a9eab7448f274", "055021744ce00395f271d1ae3e2db639", "d376ed1f7be8c7b68b23e10e6fb8d506", "c9044b3d98052543d8b7cacacbf16ac5", "bcf72e9731a3c298bf734a72d99384c2", "00f82ea2ffbfdccdd3e7754eecc0f329", "c50841e73a577bc6731b533758f89e30", "5a7b1aafe0fe9e1f9fa22fd6719795f2", "ce88667ba0ff918def42479331e11529"];
-var ca2007 = ["5ac66a36ad9d0191aed33c71779f3ffc", "450cd06884d83d345072d456447eb3be", "bef4b3ab08150343f7e1aebe68674691", "1da0293279d7cb5ba4523688d0f0ec2c", "91b1ffae0bb82cf2df0526226960010a", "b1afab7236d42144d7998aed414bff88", "7636ff42cd3136faeb0bcb51557a46cd", "713ea57f5ae14e7f6e4364ae06468a3f", "ec3d88497d42a03a5893c00e4afb0375", "3e7d5bf8ec3b9b4e2bfc14033ca262ae", "6bd6cc7492749a664e3cd6a5793e5750", "aa15d2c80bfc9d43dcf50746bb5a3827", "9b1b68ccaaa4837e2022e2de6a8f8e83", "f40d4d2a6f82a93cb08ee1dc97df0479", "26d61a90c35fa5ba7fb4a77841be98e9", "db8efcc13189aa2b1551ecb292e4823d", "4dd0c6c8d3b489db8504a7f2ed1a6826", "30b0f764d635d16334217602c90b986a", "ece4706ec5cbad0f0433c53f07c3a827", "5bf53c31fbdd23ff655ef623463765ce"];
-
 var errors = false;
 var errorLog = [];
 var errorSummary = '';
@@ -26,8 +23,6 @@ var whitelistRegex = [];
 
 // ====
 // Functions
-
-var md5=function(h){function i(c,d){return((c>>1)+(d>>1)<<1)+(c&1)+(d&1)}for(var m=[],l=0;64>l;)m[l]=0|4294967296*Math.abs(Math.sin(++l));return function(c){for(var d,g,f,a,j=[],c=unescape(encodeURI(c)),b=c.length,k=[d=1732584193,g=-271733879,~d,~g],e=0;e<=b;)j[e>>2]|=(c.charCodeAt(e)||128)<<8*(e++%4);j[c=(b+8>>6)*h+14]=8*b;for(e=0;e<c;e+=h){b=k;for(a=0;64>a;)b=[f=b[3],i(d=b[1],(f=i(i(b[0],[d&(g=b[2])|~d&f,f&d|~f&g,d^g^f,g^(d|~f)][b=a>>4]),i(m[a],j[[a,5*a+1,3*a+5,7*a][b]%h+e])))<<(b=[7,12,17,22,5,9,14,20,4,11,h,23,6,10,15,21][4*b+a++%4])|f>>>32-b),d,g];for(a=4;a;)k[--a]=i(k[a],b[a])}for(c="";32>a;)c+=(k[a>>3]>>4*(1^a++&7)&15).toString(h);return c}}(16);
 
 // Generated Thu, Dec 13, 2012  1:26:14 PM
 var extractString = function (content, startIndex) { var index = content.indexOf("\"", startIndex); var value = null; if (index === startIndex && index >= 0) { var startStringIndex = index + 1; if (startStringIndex < content.length) { var regularQuoteIndex = content.indexOf("\"", startStringIndex); var escapedQuoteIndex = -1; if (regularQuoteIndex >= 0) { var escapeIndex = content.lastIndexOf("\\", regularQuoteIndex); if (escapeIndex === regularQuoteIndex - 1) { escapedQuoteIndex = escapeIndex; } } while(escapedQuoteIndex >= 0 && regularQuoteIndex >= 0 && escapedQuoteIndex < regularQuoteIndex) { var nextIndex = regularQuoteIndex + 1; if (nextIndex < content.length) { regularQuoteIndex = content.indexOf("\"", nextIndex); if (regularQuoteIndex >= 0) { var escapeIndex = content.lastIndexOf("\\", regularQuoteIndex); if (escapeIndex === regularQuoteIndex - 1) { escapedQuoteIndex = escapeIndex; } else { escapedQuoteIndex = -1; } } } } if (regularQuoteIndex >= 0) { var str = content.substr(startStringIndex, regularQuoteIndex - startStringIndex); str = str.replace(/^\s+|\s+$/g, ""); value = { value: str, startIndex: startStringIndex, endIndex: regularQuoteIndex } } } } return value; } 
@@ -71,11 +66,6 @@ for(var j=0;j<maxIndex;j++) {
     errorSummary += KNWeb.ErrorNumber + ' ' + url + ' ';
     errors = true;
     continue;
-  }
-  if((country == 'us' && md5(panoJs) != us2005[j]) ||
-     (country == 'ca' && md5(panoJs) != ca2007[j])) {
-    Scripter.Log("**ERROR MD5 hash for pano #" + j + " does not match.");
-    errorSummary += "MD5 " + j;
   }
   panoJs = panoJs.replace(/\\\//gm, '/');
   Scripter.Log("Response content length: " + panoJs.length);

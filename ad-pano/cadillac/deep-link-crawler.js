@@ -110,6 +110,7 @@ var checkPanoId = function(json, url) {
   var panoId = json['pano']['id'];
   var panoIdCheck = country == 'us' ? us[index] : '';
       panoIdCheck = country == 'ca' ? ca[index] : panoIdCheck;
+  Scripter.Log("Checking pano ID for " + index + " is " + panoId);
   if (panoId != panoIdCheck) {
     setError(-90505, "Pano ID does not match for " + index + ". Should be " + panoIdCheck + ". Got " + panoId);
   }

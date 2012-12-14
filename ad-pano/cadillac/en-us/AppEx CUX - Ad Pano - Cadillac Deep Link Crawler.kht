@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
-<script type="ApplicationPerspective" version="6.3.73.290" guid="3313F621-4CCD-4D66-8ABE-F385BE76E585" recorder="11.1.133.400" sav="93" xmlns="http://www.keynote.com/namespaces/tstp/script"><name><![CDATA[ApP Script]]></name><description><![CDATA[]]></description><settings><s_timeout>45</s_timeout><timeout>60</timeout><browser customName="Microsoft Internet Explorer 7" type="Custom"><![CDATA[Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)]]></browser><download applets="1" images="1" scripts="1"/><cookies enable="1"/><errors all="0"/><certificates/><javascript_processing><![CDATA[true]]></javascript_processing><stylesheet_parsing><![CDATA[true]]></stylesheet_parsing><disable_element_download>0</disable_element_download><redirectlimit>10</redirectlimit></settings><actions><action FrameErrorFatal="1" MetaErrorFatal="1"><name><![CDATA[]]></name><description><![CDATA[]]></description><step type="Navigate"><context window="0" frame="0"/><parameter name="URL"><variable type="Static"><![CDATA[http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS.js]]></variable></parameter></step><step type="Script"><context window="0" frame="0"/><code language="JavaScript"><parameter name="Code"><variable type="Static">/*
+<script type="ApplicationPerspective" version="6.3.73.290" guid="3313F621-4CCD-4D66-8ABE-F385BE76E585" recorder="11.1.133.400" sav="101" xmlns="http://www.keynote.com/namespaces/tstp/script"><name><![CDATA[ApP Script]]></name><description><![CDATA[]]></description><settings><s_timeout>45</s_timeout><timeout>60</timeout><browser customName="Microsoft Internet Explorer 7" type="Custom"><![CDATA[Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)]]></browser><download applets="1" images="1" scripts="1"/><cookies enable="1"/><errors all="0"/><certificates/><javascript_processing><![CDATA[true]]></javascript_processing><stylesheet_parsing><![CDATA[true]]></stylesheet_parsing><disable_element_download>0</disable_element_download><redirectlimit>10</redirectlimit></settings><actions><action FrameErrorFatal="1" MetaErrorFatal="1"><name><![CDATA[]]></name><description><![CDATA[]]></description><step type="Navigate"><context window="0" frame="0"/><parameter name="URL"><variable type="Static"><![CDATA[http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS.js]]></variable></parameter></step><step type="Script"><context window="0" frame="0"/><code language="JavaScript"><parameter name="Code"><variable type="Static">/*
  * Cadillac deep link crawler
  * Finds deep links within the entrypoint json and traverse through to:
  *  1) make sure there's no invalid deeplinks
@@ -11,15 +11,19 @@ Scripter.Logging = 1;
 // ====
 // Variables
 var version = 2.005;    // smallest version number to require
+var country = "us";     // us or ca
 var deepLinks = [];
 var jsonUrls = [];
 var entryUrl = KNWeb.GetURL(0);
+
+var us = ["CadillacATS_EN-US_Home", "CadillacATS_EN-US_Patagonia", "CadillacATS_EN-US_Morocco", "CadillacATS_EN-US_Monaco", "CadillacATS_EN-US_China", "CadillacATS_EN-US_Patagonia_SS0", "CadillacATS_EN-US_Patagonia_SS1", "CadillacATS_EN-US_Patagonia_SS2", "CadillacATS_EN-US_Morocco_SS0", "CadillacATS_EN-US_Morocco_SS1", "CadillacATS_EN-US_Morocco_SS2", "CadillacATS_EN-US_Morocco_SS3", "CadillacATS_EN-US_Monaco_SS0", "CadillacATS_EN-US_Monaco_SS1", "CadillacATS_EN-US_Monaco_SS2", "CadillacATS_EN-US_Monaco_SS3", "CadillacATS_EN-US_China_SS0", "CadillacATS_EN-US_China_SS1", "CadillacATS_EN-US_China_SS2", "CadillacATS_EN-US_China_SS3"];
+var ca = ["CadillacATS_en-ca_Home", "CadillacATS_en-ca_Patagonia", "CadillacATS_en-ca_Morocco", "CadillacATS_en-ca_Monaco", "CadillacATS_en-ca_China", "CadillacATS_en-ca_Patagonia_SS0", "CadillacATS_en-ca_Patagonia_SS1", "CadillacATS_en-ca_Patagonia_SS2", "CadillacATS_en-ca_Morocco_SS0", "CadillacATS_en-ca_Morocco_SS1", "CadillacATS_en-ca_Morocco_SS2", "CadillacATS_en-ca_Morocco_SS3", "CadillacATS_en-ca_Monaco_SS0", "CadillacATS_en-ca_Monaco_SS1", "CadillacATS_en-ca_Monaco_SS2", "CadillacATS_en-ca_Monaco_SS3", "CadillacATS_en-ca_China_SS0", "CadillacATS_en-ca_China_SS1", "CadillacATS_en-ca_China_SS2", "CadillacATS_en-ca_China_SS3"];
 
 // ====
 // Functions
 var contentIdRegexp = '\/view\\?entitytype=video\&amp;contentId=([^"&amp;]*)'; var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid="; var numManifestServers = 5; var formatCode = ['1002', '103']; var filetype = '(mp4|wmv)'; 
 var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, description); } 
-var isNull = function(obj) { return obj == undefined; } 
+var isNull = function(obj) { return obj == undefined } 
 var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } } 
 var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' &amp;&amp; obj == '') { return true; } return false; } 
 var fetchContent = function(url, request) { var request = typeof request == 'undefined'? 'get' : request; var result; KNWeb.SessionRC = true; if(/head/i.test(request)) { Scripter.Log("Issuing HEAD request for: " + url); result = KNWeb.Head(url); } else { Scripter.Log ("Issuing GET request for: " + url); result = KNWeb.Get(url); } if(!result) { return ''; } var header = KNWeb.GetResponseHeaders(0); if(isEmptyOrNull(header)) { return '' } var resp = header.match(/[^\r\n]*/); if(!isEmptyOrNull(resp)) { Scripter.Log("Received a response of '" + resp + "'."); } else { Scripter.Log("No header response!"); return ''; } if(/get/i.test(request) &amp;&amp; /200/.test(header)) { return KNWeb.GetContent(0); } return header; } 
@@ -98,6 +102,21 @@ var checkVersion = function(json) {
   }
 }
 
+var checkPanoId = function(json, url) {
+  checkNull(json['pano']);
+  checkNull(json['pano']['id']);
+  var index = url.match(/cadillacATS([0-9]+)\.js/);
+  index = isNull(index)? 0 : index[1];
+  checkNull(index);
+  var panoId = json['pano']['id'];
+  var panoIdCheck = country == 'us' ? us[index] : '';
+      panoIdCheck = country == 'ca' ? ca[index] : panoIdCheck;
+  Scripter.Log("Checking pano ID for " + index + " is " + panoId);
+  if (panoId != panoIdCheck) {
+    setError(-90505, "Pano ID does not match for " + index + ". Should be " + panoIdCheck + ". Got " + panoId);
+  }
+}
+
 var crawl = function(url) {
   var content = fetchContent(url);
   if(!content) {
@@ -111,6 +130,7 @@ var crawl = function(url) {
   // here is the entrypoint to do whatever validations and checks we want with the jsons
   extractDeepLink(json);
   checkVersion(json);
+  checkPanoId(json, url);
 
   for(jsonUrl in jsonUrls) {
     if(jsonUrls[jsonUrl] == 'checked') {
@@ -128,4 +148,4 @@ var crawl = function(url) {
 jsonUrls[entryUrl] = 'checked';
 crawl(entryUrl)
 
-</variable></parameter></code></step></action></actions><info OS="6.2.9200 " IE="9.10.9200.16420" MSHTML="10.0.9200.16420" WinInet="10.0.9200.16420" WinHttp="6.2.9200.16384" MSXML6="6.30.9200.16384"><ps e="0" d="4791" s="37333" el="21"/></info><report><![CDATA[<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>Script View</title><link rel="stylesheet" type="text/css" title="" href="../kite/Report.css"/></head><body><ul class="scriptviewer"><ul><li class='script_i3'><span class='script_i3_s'>ApP Script</span></li><ul><li class='settings_i22'><span class='settings_i22_s'>Settings</span></li><ul><li class=''><span class='_s'>Timeout: 60 sec</span></li></ul></ul><li class='empty-line'><div></div></li><ul class="actionblock"><li class='action_i6'><span class='action_i6_s'>1.[Action]</span></li><ul><li class='step_i11'><span class='step_i11_s'>Navigate to</span></li><ul><li class='parameter'><span class='parameter_s'>URL: http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS.js</span></li></ul><li class='step_i14'><span class='step_i14_s'>Script</span></li></ul></ul></ul></ul></body></html>]]></report></script>
+</variable></parameter></code></step></action></actions><info OS="6.2.9200 " IE="9.10.9200.16420" MSHTML="10.0.9200.16420" WinInet="10.0.9200.16420" WinHttp="6.2.9200.16384" MSXML6="6.30.9200.16384"><ps e="0" d="4431" s="38141" el="21"/></info><report><![CDATA[<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>Script View</title><link rel="stylesheet" type="text/css" title="" href="../kite/Report.css"/></head><body><ul class="scriptviewer"><ul><li class='script_i3'><span class='script_i3_s'>ApP Script</span></li><ul><li class='settings_i22'><span class='settings_i22_s'>Settings</span></li><ul><li class=''><span class='_s'>Timeout: 60 sec</span></li></ul></ul><li class='empty-line'><div></div></li><ul class="actionblock"><li class='action_i6'><span class='action_i6_s'>1.[Action]</span></li><ul><li class='step_i11'><span class='step_i11_s'>Navigate to</span></li><ul><li class='parameter'><span class='parameter_s'>URL: http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/cadillacATS.js</span></li></ul><li class='step_i14'><span class='step_i14_s'>Script</span></li></ul></ul></ul></ul></body></html>]]></report></script>

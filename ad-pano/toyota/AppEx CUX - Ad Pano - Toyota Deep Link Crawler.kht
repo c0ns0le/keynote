@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<script type="ApplicationPerspective" version="6.3.73.290" guid="3313F621-4CCD-4D66-8ABE-F385BE76E585" recorder="11.1.133.400" sav="105" xmlns="http://www.keynote.com/namespaces/tstp/script"><name><![CDATA[ApP Script]]></name><description><![CDATA[]]></description><settings><s_timeout>45</s_timeout><timeout>60</timeout><browser customName="Microsoft Internet Explorer 7" type="Custom"><![CDATA[Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)]]></browser><download applets="1" images="1" scripts="1"/><cookies enable="1"/><errors all="0"/><certificates/><javascript_processing><![CDATA[true]]></javascript_processing><stylesheet_parsing><![CDATA[true]]></stylesheet_parsing><disable_element_download>0</disable_element_download><redirectlimit>10</redirectlimit></settings><actions><action FrameErrorFatal="1" MetaErrorFatal="1"><name><![CDATA[]]></name><description><![CDATA[]]></description><step type="Navigate"><context window="0" frame="0"/><parameter name="URL"><variable type="Static"><![CDATA[http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/ToyotaLGP.js]]></variable></parameter></step><step type="Script"><context window="0" frame="0"/><code language="JavaScript"><parameter name="Code"><variable type="Static">/*
+ * AppEx Common UX Ad Pano deep link crawler
+ * Finds deep links within the entrypoint json and traverse through to:
+ *  1) make sure there's no invalid deeplinks
+ *  2) check version number
+ *
+ * Version 0.4
+ * Last modified: Dec 13, 2012
+ *
+ * Changelog:
+ * - 
+ */
+
+Scripter.Logging = 1;
+
+// ====
+// Variables
+var version = 2.001;    // smallest version number to require
+var country = "us";     // us or ca
+var deepLinks = [];
+var jsonUrls = [];
+var entryUrl = KNWeb.GetURL(0);
+
+var us = ["ToyotaLGP_en-us_HOME"];
+//var ca = ["CadillacATS_en-ca_Home", "CadillacATS_en-ca_Patagonia", "CadillacATS_en-ca_Morocco", "CadillacATS_en-ca_Monaco", "CadillacATS_en-ca_China", "CadillacATS_en-ca_Patagonia_SS0", "CadillacATS_en-ca_Patagonia_SS1", "CadillacATS_en-ca_Patagonia_SS2", "CadillacATS_en-ca_Morocco_SS0", "CadillacATS_en-ca_Morocco_SS1", "CadillacATS_en-ca_Morocco_SS2", "CadillacATS_en-ca_Morocco_SS3", "CadillacATS_en-ca_Monaco_SS0", "CadillacATS_en-ca_Monaco_SS1", "CadillacATS_en-ca_Monaco_SS2", "CadillacATS_en-ca_Monaco_SS3", "CadillacATS_en-ca_China_SS0", "CadillacATS_en-ca_China_SS1", "CadillacATS_en-ca_China_SS2", "CadillacATS_en-ca_China_SS3"];
+
+// ====
+// Functions
+
+// Generated Tue, Jan 15, 2013 11:13:05 AM
+var extractString = function (content, startIndex) { var index = content.indexOf("\"", startIndex); var value = null; if (index === startIndex &amp;&amp; index &gt;= 0) { var startStringIndex = index + 1; if (startStringIndex &lt; content.length) { var regularQuoteIndex = content.indexOf("\"", startStringIndex); var escapedQuoteIndex = -1; if (regularQuoteIndex &gt;= 0) { var escapeIndex = content.lastIndexOf("\\", regularQuoteIndex); if (escapeIndex === regularQuoteIndex - 1) { escapedQuoteIndex = escapeIndex; } } while(escapedQuoteIndex &gt;= 0 &amp;&amp; regularQuoteIndex &gt;= 0 &amp;&amp; escapedQuoteIndex &lt; regularQuoteIndex) { var nextIndex = regularQuoteIndex + 1; if (nextIndex &lt; content.length) { regularQuoteIndex = content.indexOf("\"", nextIndex); if (regularQuoteIndex &gt;= 0) { var escapeIndex = content.lastIndexOf("\\", regularQuoteIndex); if (escapeIndex === regularQuoteIndex - 1) { escapedQuoteIndex = escapeIndex; } else { escapedQuoteIndex = -1; } } } } if (regularQuoteIndex &gt;= 0) { var str = content.substr(startStringIndex, regularQuoteIndex - startStringIndex); str = str.replace(/^\s+|\s+$/g, ""); value = { value: str, startIndex: startStringIndex, endIndex: regularQuoteIndex } } } } return value; } 
+var getNextDelimiter = function (content, index) { var closestIndex = content.length + 1; var closestDelimiter = ""; if (index &lt; content.length) { var openCurlyBracketIndex = content.indexOf("{", index); if (openCurlyBracketIndex &gt;= 0) { closestIndex = openCurlyBracketIndex; closestDelimiter = "{"; } var closeCurlyBracketIndex = content.indexOf("}", index); if (closeCurlyBracketIndex &gt;= 0 &amp;&amp; closeCurlyBracketIndex &lt; closestIndex) { closestIndex = closeCurlyBracketIndex; closestDelimiter = "}"; } var openSquareBracketIndex = content.indexOf("[", index); if (openSquareBracketIndex &gt;= 0 &amp;&amp; openSquareBracketIndex &lt; closestIndex) { closestIndex = openSquareBracketIndex; closestDelimiter = "["; } var closeSquareBracketIndex = content.indexOf("]", index); if (closeSquareBracketIndex &gt;= 0 &amp;&amp; closeSquareBracketIndex &lt; closestIndex) { closestIndex = closeSquareBracketIndex; closestDelimiter = "]"; } var doubleQuoteIndex = content.indexOf("\"", index); if (doubleQuoteIndex &gt;= 0 &amp;&amp; doubleQuoteIndex &lt; closestIndex) { closestIndex = doubleQuoteIndex; closestDelimiter = "\""; } var colonIndex = content.indexOf(":", index); if (colonIndex &gt;= 0 &amp;&amp; colonIndex &lt; closestIndex) { closestIndex = colonIndex; closestDelimiter = ":"; } var commaIndex = content.indexOf(",", index); if (commaIndex &gt;= 0 &amp;&amp; commaIndex &lt; closestIndex) { closestIndex = commaIndex; closestDelimiter = ","; } } if (closestIndex === content.length + 1) { closestIndex = -1; } return { delimiter: closestDelimiter, index: closestIndex }; } 
+var getSnippet = function (content, index, length) { length = length || 100; var snippet = ""; var half = length / 2; var startIndex = (index - half) &gt;= 0 ? (index - half) : index; var endIndex = (index + half) &lt; content.length ? (index + half) : content.length - 1; if (startIndex &lt; endIndex) { snippet = content.substr(startIndex, endIndex - startIndex ); } return snippet; } 
+var parseJSON = function (content, index) { var delimData = getNextDelimiter(content, index); var value = null; var snippet = ""; if (delimData.index &gt;= 0) { if (delimData.delimiter === "\"") { var strValue = extractString(content, delimData.index); if (strValue) { value = { value: strValue.value, endIndex: strValue.endIndex } } else { throw { message: "Failed to parse string.", snippet: getSnippet(content, delimData.index) } } } else if (delimData.delimiter === "{") { var newObject = {}; delimData = getNextDelimiter(content, delimData.index + 1); while (delimData.index &gt;= 0 &amp;&amp; delimData.delimiter !== "}") { if (delimData.delimiter === "\"") { var strData = extractString(content, delimData.index); if (strData) { delimData = getNextDelimiter(content, strData.endIndex + 1); if (delimData.index &gt;= 0 &amp;&amp; delimData.delimiter === ":") { var parsedChildResult = parseJSON(content, delimData.index + 1); if (parsedChildResult) { newObject[strData.value] = parsedChildResult.value; delimData = getNextDelimiter(content, parsedChildResult.endIndex + 1); continue; } else { throw { message: "Failed to parse object.", snippet: getSnippet(content, delimData.index) } } } else { throw { message: "Failed to find \":\" in field.", snippet: getSnippet(content, delimData.index) } } } else { throw { message: "Failed to parse string.", snippet: getSnippet(content, delimData.index) } } } else if(delimData.delimiter === ",") { } delimData = getNextDelimiter(content, delimData.index + 1); } value = { value: newObject, endIndex: delimData.index } } else if (delimData.delimiter === "[") { var newArray = []; var lastWasComma = false; var skipComma = false; var lastIndex = delimData.index + 1; delimData = getNextDelimiter(content, lastIndex); while (delimData.index &gt;= 0 &amp;&amp; delimData.delimiter !== "]") { if (delimData.delimiter === "\"") { var strData = extractString(content, delimData.index); if (strData) { newArray.push(strData.value); delimData = getNextDelimiter(content, strData.endIndex + 1); lastIndex = strData.endIndex + 1; lastWasComma = false; skipComma = true; continue; } else { throw { message: "Failed to parse string.", snippet: getSnippet(content, delimData.index) } } } else if (delimData.delimiter === "{" || delimData.delimiter === "[") { var parsedChildResult = parseJSON(content, delimData.index); if (parsedChildResult) { newArray.push(parsedChildResult.value); delimData = getNextDelimiter(content, parsedChildResult.endIndex + 1); lastIndex = parsedChildResult.endIndex + 1; lastWasComma = false; skipComma = true; continue; } else { throw { message: "Failed to parse object.", snippet: getSnippet(content, delimData.index) } } } else if (delimData.delimiter === ",") { if (!skipComma) { var length = delimData.index - lastIndex; if (length &gt; 0) { var strValue = content.substr(lastIndex, length); newArray.push(strValue); } } lastIndex = delimData.index + 1; lastWasComma = true; skipComma = false; } delimData = getNextDelimiter(content, delimData.index + 1); } if (lastWasComma) { var length = delimData.index - lastIndex; if (length &gt; 0) { var strValue = content.substr(lastIndex, length); newArray.push(strValue); } } value = { value: newArray, endIndex: delimData.index } } else if (delimData.delimiter === "," || delimData.delimiter === "}" || delimData.delimiter === "]") { var length = delimData.index - index; if (length &gt; 0) { var strValue = content.substr(index, length); value = { value: strValue, endIndex: (delimData.index - 1) } } else { value = ""; } } } return value; }
+var contentIdRegexp = '\/view\\?entitytype=video\&amp;contentId=([^"&amp;]*)'; var manifestBaseUrl = "http://edge%ENDPOINT%.catalog.video.msn.com/videobyuuid.aspx?uuid="; var numManifestServers = 5; var formatCode = ['1002', '103']; var filetype = '(mp4|wmv)'; 
+var setError = function(errorCode, description) { Scripter.Log(description); Scripter.SetError(errorCode, true); KNWeb.SetErrorDetails(errorCode, 'ERROR', description); } 
+var isNull = function(obj) { return obj == undefined; } 
+var checkNull = function(obj, description) { if(isNull(obj)) { setError(-90404, description + " is null"); } } 
+var isEmptyOrNull = function(obj) { if(isNull(obj)) { return true; } if(typeof obj == 'string' &amp;&amp; obj == '') { return true; } return false; } 
+var fetchContent = function(url, request, retry) { var request = request == undefined? 'get' : request; var retry = retry == undefined? 3 : retry; var result; KNWeb.SessionRC = true; retry--; if(/head/i.test(request)) { Scripter.Log("Issuing HEAD request for: " + url); result = KNWeb.Head(url); } else { Scripter.Log ("Issuing GET request for: " + url); result = KNWeb.Get(url); } if(!result) { if(retry &lt; 0) { return ''; } return fetchContent(url, request, retry-1); } var header = KNWeb.GetResponseHeaders(0); if(isEmptyOrNull(header)) { if(retry &lt; 0) { return 'empty header'; } return fetchContent(url, request, retry-1); } var resp = header.match(/[^\r\n]*/); if(isEmptyOrNull(resp)) { if(retry &lt; 0) { Scripter.Log("No header response!"); return ''; } return fetchContent(url, request, retry-1); } else { Scripter.Log("Received a response of '" + resp + "'."); } if(/get/i.test(request) &amp;&amp; /200/.test(header)) { return KNWeb.GetContent(0); } return header; } 
+var fetchManifestUrl = function(baseUrl) { serverEndpoint = Math.floor((Math.random()*numManifestServers)+1); return manifestBaseUrl.replace("%ENDPOINT%", serverEndpoint); } 
+var getTitle = function(content) { regex = new RegExp('&lt;title&gt;(.*?)&lt;\/title&gt;', 'im'); title = content.match(regex); if(!title || title.length != 2) { return 'NA'; } return title[1].replace(/^\s+|\s+$/g, ''); } 
+var getContentId = function(url) { match = url.match(/uuid=([0-9a-zA-Z-]*)/i); if(!match) { return ''; } return match[1]; } 
+var verifyVideosInManifest = function(manifestUrl, format) { pingVideoEndpoint = false; failed = true; parsingError = false; format = typeof format === 'undefined'? ['*'] : format; format = typeof format === 'string'? [format] : format; content = fetchContent(manifestUrl); if(isEmptyOrNull(content)) { Scripter.Log("** FAILED on downloading manifest file"); errorLog.push("**ERROR**\tManifest file missing - " + manifestUrl); errorSummary += getContentId(manifestUrl) + '; '; return failed; } Scripter.Log("Processing format(s): " + format); for(var i=0; i&lt;format.length; i++) { regex = new RegExp('&lt;videoFile formatCode="' + format[i] + '".*?&lt;\/videoFile&gt;', 'gim'); videoFiles = content.match(regex); if(!videoFiles) { Scripter.Log("*** FAILED on format " + format[i] + "."); errorLog.push("**WARNING**\tManifest " + manifestUrl + " does not have format code " + format[i]); continue; } if(videoFiles.length != 1 &amp;&amp; format[i] != '*' ) { Scripter.Log("** PARSING ERROR on manifest " + manifestUrl); errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl); errorSummary += getContentId(manifestUrl) + '; '; parsingError = true; break; } for(var j=0; j&lt;videoFiles.length; j++) { regex = new RegExp('http[^"]*\.' + filetype, 'gi'); videoUris = videoFiles[j].match(regex); if(!videoUris) { Scripter.Log("*** FAILED on finding a matching video for format " + format[i] + "."); errorLog.push("**WARNING**\tNo " + filetype + " file for format code " + format[i] + " in manifest " + manifestUrl); continue; } if(videoUris.length != 1) { Scripter.Log("** PARSING ERROR on manifest " + manifestUrl); errorLog.push("**ERROR**\tParsing error on manifest " + manifestUrl); errorSummary += getContentId(manifestUrl) + '; '; parsingError = true; break; } else { Scripter.Log("Found video url for format " + format[i] + ": " + videoUris[0]); if(pingVideoEndpoint &amp;&amp; isEmptyOrNull(fetchContent(videoUris[0], 'head'))) { errorLog.push("Head request for " + videoUris[0] + " failed. Error code " + KNWeb.ErrorNumber); errors = true; } } } failed = false; } if(failed) { for(var i=0; i&lt;format.length; i++) { errorLog.pop(); } errorLog.push("**ERROR**\tManifest " + manifestUrl + " does not have format code(s) " + format); errorSummary += ' No ' + format + ' for ' + getContentId(manifestUrl); } return failed || parsingError; }
+
+var deconstructDeepLink = function(deeplink, url) {
+  // Make sure it is a cloud pano deep link
+  if(!(/^\/\/application/.test(deeplink) &amp;&amp; /entitytype=cloudPano/.test(deeplink))) {
+    return ''
+  }
+  var campaign = deeplink.match(/campaign=([\w\n_-]*)/);
+  checkNull(campaign, "campaign ID for " + deeplink);
+  checkNull(campaign[1], "campaign ID for " + deeplink);
+
+  var index = deeplink.match(/index=([\w\n_-]*)/);
+  checkNull(index, "index for " + deeplink);
+  checkNull(index[1], "index for " + deeplink);
+
+  return url.replace(/\/[^\/]*\.js/, '/' + campaign[1] + index[1] + '.js');
+}
+
+var extractDeepLink = function(json) {
+  // json['pages'][0]['modules'][0]['data']['destinationUri']
+  checkNull(json, "JSON definition");
+  checkNull(json['pages'], "Pages");
+
+  for(i in json['pages']) {
+    checkNull(json['pages'][i], "Page definition");
+    checkNull(json['pages'][i]['modules'], "Modules");
+
+    for(j in json['pages'][i]['modules']) {
+      checkNull(json['pages'][i]['modules'][j], "Module definition");
+      checkNull(json['pages'][i]['modules'][j]['data'], "Module data");
+
+      if(isNull(json['pages'][i]['modules'][j]['data']['destinationUri'])) {
+        continue;
+      }
+      destinationUri = json['pages'][i]['modules'][j]['data']['destinationUri'].replace(/\\\//gm, '/');
+      if(/^\/\/application/.test(destinationUri)) {
+        var jsonUrl = deconstructDeepLink(destinationUri, entryUrl);
+        //Scripter.Log("- Found deep link: " + destinationUri);
+        if(isNull(jsonUrls[jsonUrl])) {
+          //Scripter.Log("--&gt; Translated deep link to url: " + jsonUrl);
+          Scripter.Log("Translated deep link " + destinationUri + " to url: " + jsonUrl);
+          jsonUrls[jsonUrl] = '';
+        }
+        else {
+          //Scripter.Log("--&gt; Duplicate!");
+        }
+      }
+    }
+  }
+}
+
+var checkVersion = function(json) {
+  checkNull(json['pano']);
+  checkNull(json['pano']['id']);
+  checkNull(json['version']);
+
+  var id = json['pano']['id'];
+  Scripter.Log("Checking version for " + id + " to be at least " + version.toFixed(4));
+  try {
+    var current = parseFloat(json['version']);
+  }
+  catch(err) { Scripter.Log("Version " + json['version'] + " is not number: ") + err.message; }
+  if(current &lt; version) {
+    setError(-90505, "Expected: at least version " + version + ". Actual: " + current);
+  }
+}
+
+var checkPanoId = function(json, url) {
+  checkNull(json['pano']);
+  checkNull(json['pano']['id']);
+  var index = url.match(/cadillacATS([0-9]+)\.js/);
+  index = isNull(index)? 0 : index[1];
+  checkNull(index);
+  var panoId = json['pano']['id'];
+  var panoIdCheck = country == 'us' ? us[index] : '';
+      panoIdCheck = country == 'ca' ? ca[index] : panoIdCheck;
+  Scripter.Log("Checking pano ID for " + index + " is " + panoId);
+  if (panoId != panoIdCheck) {
+    setError(-90505, "Pano ID does not match for " + index + ". Should be " + panoIdCheck + ". Got " + panoId);
+  }
+}
+
+var crawl = function(url) {
+  var content = fetchContent(url);
+  if(!content) {
+    setError(KNWeb.ErrorNumber, url + " failed to download!");
+  }
+  Scripter.Log("Response content length: " + content.length);
+  try {
+    var json = parseJSON(content,0).value;
+  }
+  catch(err) { Scripter.Log("Error parsing the JSON: " + err.message); }
+  // here is the entrypoint to do whatever validations and checks we want with the jsons
+  extractDeepLink(json);
+  checkVersion(json);
+  checkPanoId(json, url);
+
+  for(jsonUrl in jsonUrls) {
+    if(jsonUrls[jsonUrl] == 'checked') {
+      continue;
+    }
+    Scripter.Log("Fetching json from " + jsonUrl);
+    jsonUrls[jsonUrl] = 'checked';
+    crawl(jsonUrl);
+  }
+}
+
+
+// ====
+// Script
+jsonUrls[entryUrl] = 'checked';
+crawl(entryUrl)
+
+</variable></parameter></code></step></action></actions><info OS="6.2.9200 " IE="9.10.9200.16453" MSHTML="10.0.9200.16458" WinInet="10.0.9200.16453" WinHttp="6.2.9200.16384" MSXML6="6.30.9200.16447"><ps e="0" d="17" s="8254" el="2"/></info><report><![CDATA[<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>Script View</title><link rel="stylesheet" type="text/css" title="" href="../kite/Report.css"/></head><body><ul class="scriptviewer"><ul><li class='script_i3'><span class='script_i3_s'>ApP Script</span></li><ul><li class='settings_i22'><span class='settings_i22_s'>Settings</span></li><ul><li class=''><span class='_s'>Timeout: 60 sec</span></li></ul></ul><li class='empty-line'><div></div></li><ul class="actionblock"><li class='action_i6'><span class='action_i6_s'>1.[Action]</span></li><ul><li class='step_i11'><span class='step_i11_s'>Navigate to</span></li><ul><li class='parameter'><span class='parameter_s'>URL: http://en-us.appex-rf.msn.com/cp/v1/en-us/Ad/ToyotaLGP.js</span></li></ul><li class='step_i14'><span class='step_i14_s'>Script</span></li></ul></ul></ul></ul></body></html>]]></report></script>

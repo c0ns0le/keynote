@@ -1,3 +1,4 @@
-Run mkall.sh, it will generate all.js and all.min.js
-Include all.min.js on all Keynote scripts - it will provide an uniform copy of all necessary functions for writing Keynote scripts
+Run `make` to generate all.js
+Include all.js on all Keynote scripts - it will provide an uniform copy of all necessary functions for writing Keynote scripts
 
+Run `make clean` to delete *.min.js
